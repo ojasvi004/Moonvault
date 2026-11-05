@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* Midnight Warm — deep plum night, warm ivory text, amber + rose accents. */
+:root {
+  --bg: #0d0a18;
+  --bg-2: #141024;
+  --card: #1a1530;
+  --card-2: #221b3c;
+  --line: #2f2750;
+  --text: #f5ede4;
+  --muted: #b7abc8;
+  --faint: #7f7499;
+  --accent: #f2a65a;
+  --accent-ink: #1b1206;
+  --rose: #ec7c8e;
+  --rose-soft: #ec7c8e33;
+  --lav: #a993f7;
+  --lav-soft: #a993f72e;
+  --gold: #f7d27a;
+  --ok: #7fd6a8;
+  --warn: #f5c26b;
+  --bad: #ff8a8a;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-rose: var(--rose);
+  --color-rose-soft: var(--rose-soft);
+  --color-lav: var(--lav);
+  --color-lav-soft: var(--lav-soft);
+  --color-gold: var(--gold);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Noto Serif", ui-serif, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, #3a1f4a55, transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, #4a2a1a40, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #f2a65a55;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.font-display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+.card {
+  background: linear-gradient(180deg, #1d173580, #17122b80);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+.chip[aria-pressed="true"] {
+  background: #f2a65a22;
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+.input::placeholder {
+  color: var(--faint);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.moon-glow {
+  box-shadow: 0 0 80px 10px #f2a65a22, inset 0 0 40px #f7d27a22;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Doctor view is a light, printable report */
+.paper {
+  --text: #1d1a24;
+  --muted: #5b5568;
+  --line: #e4dfe9;
+  background: #fbf8f4;
+  color: #1d1a24;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}
