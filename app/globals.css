@@ -128,6 +128,25 @@ body {
   animation: spin 0.9s linear infinite;
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 24s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;

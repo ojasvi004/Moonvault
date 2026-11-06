@@ -207,6 +207,11 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
   async saveProfile(signer: Account, data: ProfileWrite, existingKey?: string) {
     void syncCloudProfile(signer.address, data, existingKey);
     try {
+      const balance = await arkivPublic().getBalance({ address: signer.address }).catch(() => 0n);
+      if (balance === 0n) {
+        // Testnet gas is pending or relay is unfunded. Defer on-chain write to cloud store.
+        return { entityKey: existingKey ?? `prof-${signer.address.toLowerCase()}` };
+      }
       const wallet = arkivWallet(signer);
       const values = {
         v: 1,
@@ -223,7 +228,10 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
       void syncCloudProfile(signer.address, data, entityKey);
       return { entityKey, txHash };
     } catch (err) {
-      console.warn("[Arkiv] On-chain profile write deferred (testnet gas pending); saved to cloud profile store:", err);
+      console.warn(
+        "[Arkiv] On-chain profile write deferred (testnet gas pending); saved to cloud profile store:",
+        err instanceof Error ? err.message : String(err)
+      );
       return { entityKey: existingKey ?? `prof-${signer.address.toLowerCase()}` };
     }
   }
@@ -231,6 +239,8 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
   async extendProfile(signer: Account, entityKey: string) {
     if (entityKey.startsWith("prof-")) return {};
     try {
+      const balance = await arkivPublic().getBalance({ address: signer.address }).catch(() => 0n);
+      if (balance === 0n) return {};
       const { txHash } = await arkivWallet(signer).extendEntity({ entityKey: entityKey as Hex, expiration: ExpirationTime.max() });
       return { txHash };
     } catch {
@@ -244,6 +254,10 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
     if (d.payload && d.payload.length > MAX_INLINE) throw new Error("Share package too large to store inline");
     void syncCloudShare(signer.address, d);
     try {
+      const balance = await arkivPublic().getBalance({ address: signer.address }).catch(() => 0n);
+      if (balance === 0n) {
+        return { entityKey: `share-${d.shareId}` };
+      }
       const seconds = Math.max(60, Math.ceil((d.expiresAtMs - Date.now()) / 1000));
       const { entityKey, txHash } = await arkivWallet(signer).createEntity(
         ShareSchema,
@@ -260,7 +274,10 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
       void syncCloudShare(signer.address, d, entityKey);
       return { entityKey, txHash };
     } catch (err) {
-      console.warn("[Arkiv] On-chain share write deferred (testnet gas pending); saved to cloud share store:", err);
+      console.warn(
+        "[Arkiv] On-chain share write deferred (testnet gas pending); saved to cloud share store:",
+        err instanceof Error ? err.message : String(err)
+      );
       return { entityKey: `share-${d.shareId}` };
     }
   }

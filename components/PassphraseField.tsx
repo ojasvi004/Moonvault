@@ -54,7 +54,7 @@ export function PassphraseField({
           autoComplete="new-password"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="e.g. two or three words you'll remember"
+          placeholder="e.g. choose a strong password"
           autoFocus={autoFocus}
           aria-describedby="pp-strength"
         />

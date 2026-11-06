@@ -5,9 +5,9 @@ import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 type Variant = "primary" | "ghost" | "soft" | "danger";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-ink hover:brightness-110 shadow-[0_8px_30px_-8px_#f2a65a88]",
+  primary: "bg-accent text-accent-ink hover:brightness-105 shadow-[0_4px_16px_-4px_#e0833266]",
   ghost: "border border-line text-text hover:bg-card-2",
-  soft: "bg-card-2 text-text hover:bg-[#2a2248]",
+  soft: "bg-card-2 text-text hover:bg-line/40",
   danger: "border border-bad/50 text-bad hover:bg-bad/10",
 };
 

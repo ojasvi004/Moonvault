@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/arkiv/SKILL.md",
       "computedHash": "5b30b35f1d27007205f4c1360a0e6379c253e99a1a0c78fb3f62aeba85a9cb57"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
     }
   }
 }

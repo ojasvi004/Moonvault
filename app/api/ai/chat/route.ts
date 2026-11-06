@@ -29,7 +29,9 @@ export async function POST(req: Request) {
 
   const { messages, maxTokens } = buildMessages(body.task, body.input);
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 28_000);
+  // Give providers enough time to cold-start. This remains below maxDuration
+  // so the route can still return a useful error instead of being terminated.
+  const timer = setTimeout(() => ctrl.abort(), 55_000);
   try {
     const out = await routerChat({ model: serverEnv.zgChatModel, messages, max_tokens: maxTokens, temperature: body.task === "structure" ? 0 : 0.4 }, ctrl.signal);
     if (!out.text.trim()) return json({ error: "The AI returned an empty answer. Please retry." }, 502);

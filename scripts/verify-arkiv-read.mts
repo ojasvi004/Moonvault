@@ -1,4 +1,4 @@
-// Section 9 verification: Arkiv read access without a wallet.
+  // Section 9 verification: Arkiv read access without a wallet.
 import { createPublicClient } from "@arkiv-network/sdk"
 import { rabdi } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
