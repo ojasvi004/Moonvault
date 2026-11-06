@@ -1,8 +1,6 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useAuth } from "./hooks";
-import { MoonMark } from "./ui";
 
 function ThirdwebMark() {
   return (
@@ -12,23 +10,10 @@ function ThirdwebMark() {
   );
 }
 
-/** Wallet status + "Powered by thirdweb", shown inside every sign-in / vault box. */
+/** "Powered by thirdweb", shown inside every sign-in / vault box. */
 function WalletFooter() {
-  const auth = useAuth();
-  const addr = auth.status === "signedIn" ? auth.address : null;
   return (
     <div className="mt-5 space-y-2 border-t border-line pt-4">
-      {addr && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-line bg-card-2/60 px-3 py-2 text-xs">
-          <span className="flex items-center gap-1.5 text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-ok" />
-            Wallet connected
-          </span>
-          <span className="font-mono text-text" title={addr}>
-            {addr.slice(0, 6)}…{addr.slice(-4)}
-          </span>
-        </div>
-      )}
       <a
         href="https://thirdweb.com"
         target="_blank"
@@ -51,7 +36,6 @@ export function AuthFrame({ title, sub, children, footer }: { title: string; sub
     <div className="flex min-h-dvh flex-col">
       <header className="mx-auto flex w-full max-w-6xl items-center px-4 py-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <MoonMark />
           <span className="font-display text-lg">Moonvault</span>
         </Link>
       </header>

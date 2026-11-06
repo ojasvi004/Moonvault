@@ -31,6 +31,7 @@ function fromEntry(e: Entry): Form {
 export default function LogPage() {
   const router = useRouter();
   const today = todayISO();
+  const earliest = addDays(today, -365);
   const { entries } = useEntries();
   const [date, setDate] = useState(today);
   const [form, setForm] = useState<Form>(blank(today));
@@ -44,8 +45,8 @@ export default function LogPage() {
   // ?date=YYYY-MM-DD (read once, client-side)
   useEffect(() => {
     const d = new URLSearchParams(window.location.search).get("date");
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) queueMicrotask(() => setDate(d));
-  }, [today]);
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= earliest && d <= today) queueMicrotask(() => setDate(d));
+  }, [today, earliest]);
 
   const existing = useMemo(() => entries?.find((e) => e.date === date), [entries, date]);
 
@@ -135,6 +136,7 @@ export default function LogPage() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (form.date < earliest || form.date > today) return setErr("Choose a date within the last 12 months.");
     const sleep = form.sleepHours === "" ? undefined : Number(form.sleepHours);
     if (sleep !== undefined && (!Number.isFinite(sleep) || sleep < 0 || sleep > 24)) return setErr("Sleep should be between 0 and 24 hours.");
     try {
@@ -184,10 +186,11 @@ export default function LogPage() {
 
       <Card>
         <form onSubmit={save} className="space-y-6">
-          <Field label="Date">
+          <Field label="Date" hint={`Add past menstrual cycle data here for AI insights. Dates available: ${formatDate(earliest)} to today.`}>
             <input
               type="date"
               className="input"
+              min={earliest}
               max={today}
               value={date}
               onChange={(e) => {
