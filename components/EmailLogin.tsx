@@ -51,7 +51,15 @@ export function EmailLogin({ cta = "Continue" }: { cta?: string }) {
         <Button type="submit" loading={busy} className="w-full">
           {cta}
         </Button>
-        {mock && <Notice tone="warn">Demo mode: no email is sent. Use code {MOCK_CODE}.</Notice>}
+        <div className="flex items-center justify-center gap-1.5 text-xs text-faint">
+          <span>Powered by</span>
+          <span className="font-semibold text-text">thirdweb</span>
+        </div>
+        {mock && (
+          <Notice tone="warn">
+            <strong>Running in Mock/Demo Mode:</strong> Thirdweb Client ID is not configured or mock services are enabled. In this mode, authentication is local to this browser session. Use code <code>{MOCK_CODE}</code> to test.
+          </Notice>
+        )}
       </form>
     );
   }

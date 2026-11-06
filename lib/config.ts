@@ -14,7 +14,9 @@ export const AUTO_LOCK_MS = Number(process.env.NEXT_PUBLIC_AUTO_LOCK_MINUTES ?? 
 /** Auto-backup after this many unsynced entries. */
 export const AUTO_BACKUP_THRESHOLD = 1;
 
-export const AI_TIMEOUT_MS = 30_000;
+// 0G providers can take longer than 30 seconds to cold-start. Keep this below
+// the server route's hard limit while allowing normal provider latency.
+export const AI_TIMEOUT_MS = 55_000;
 
 export const APP_TAG = "mv"; // generic prefix used in public record schema names
 

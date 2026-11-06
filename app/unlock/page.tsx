@@ -143,7 +143,7 @@ export default function UnlockPage() {
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Vault passphrase">
+        <Field label="Vault password">
           <input className="input" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus />
         </Field>
         {err && <ErrorBox message={err} />}

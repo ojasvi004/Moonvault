@@ -16,6 +16,7 @@ const NAV = [
   { href: "/history", label: "History", icon: "M4 19V9m6 10V5m6 14v-7m4 7H3" },
   { href: "/ask", label: "Insights", icon: "M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3Zm6 11 .9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14Z" },
   { href: "/share", label: "Share", icon: "M8.6 13.5l6.8 4M15.4 6.5l-6.8 4M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" },
+  { href: "/profile", label: "Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
   { href: "/settings", label: "Vault", icon: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Z" },
 ];
 

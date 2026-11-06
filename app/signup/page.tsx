@@ -6,24 +6,53 @@ import { AuthFrame } from "@/components/AuthFrame";
 import { EmailLogin } from "@/components/EmailLogin";
 import { PassphraseField } from "@/components/PassphraseField";
 import { useAuth } from "@/components/hooks";
-import { Button, ErrorBox, Field, LinkButton, Spinner, errMsg } from "@/components/ui";
+import { Button, ErrorBox, Field, Spinner, errMsg } from "@/components/ui";
 import { getRecords } from "@/lib/adapters";
 import { getMeta } from "@/lib/vault/db";
 import { createVault } from "@/lib/vault/vault";
+import { restoreFromProfile } from "@/lib/backup/restore";
+import { saveHealthProfile } from "@/lib/vault/healthProfile";
+import { saveEntry } from "@/lib/vault/entries";
 import type { Strength } from "@/lib/vault/passphrase";
 
-type Check = { state: "checking" } | { state: "local" } | { state: "cloud" } | { state: "new" } | { state: "error"; message: string };
+type Check =
+  | { state: "checking" }
+  | { state: "local" }
+  | { state: "cloud"; root?: string }
+  | { state: "new" }
+  | { state: "error"; message: string };
+
+const CONDITIONS = [
+  "PCOS (Polycystic Ovary Syndrome)",
+  "Endometriosis",
+  "Thyroid Disorder",
+  "Irregular Cycles",
+  "Uterine Fibroids",
+  "None / Regular",
+  "Other",
+];
 
 export default function SignupPage() {
   const auth = useAuth();
   const router = useRouter();
   const [check, setCheck] = useState<Check>({ state: "checking" });
+
+  // Creation / restore states
   const [pass, setPass] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [restorePass, setRestorePass] = useState("");
   const [strength, setStrength] = useState<Strength | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+
+  // Onboarding survey step (after password creation)
+  const [step, setStep] = useState<"password" | "onboarding">("password");
+  const [avgCycle, setAvgCycle] = useState("28");
+  const [avgPeriod, setAvgPeriod] = useState("5");
+  const [lastPeriod, setLastPeriod] = useState("");
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [healthNotes, setHealthNotes] = useState("");
 
   const address = auth.status === "signedIn" ? auth.address : null;
   const email = auth.status === "signedIn" ? auth.email : undefined;
@@ -36,7 +65,11 @@ export default function SignupPage() {
       if (meta && meta.owner === address.toLowerCase()) return alive && setCheck({ state: "local" });
       const records = await getRecords();
       const profile = await records.getProfile(address);
-      if (alive) setCheck(profile ? { state: "cloud" } : { state: "new" });
+      if (!profile) {
+        if (alive) setCheck({ state: "new" });
+        return;
+      }
+      if (alive) setCheck({ state: "cloud", root: profile.backupRoot });
     })().catch((e) => alive && setCheck({ state: "error", message: errMsg(e) }));
     return () => {
       alive = false;
@@ -45,22 +78,91 @@ export default function SignupPage() {
 
   const onStrength = useCallback((s: Strength | null) => setStrength(s), []);
 
-  async function create(e: React.FormEvent) {
+  async function handleCreatePassword(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!strength?.ok) return setErr(strength?.message ?? "Please choose a longer passphrase.");
-    if (pass !== confirm) return setErr("The two passphrases don't match.");
+    if (!strength?.ok) return setErr(strength?.message ?? "Please choose a stronger password.");
+    if (pass !== confirm) return setErr("The two passwords don't match.");
     if (!address) return;
+
     setBusy(true);
     try {
       await createVault(address, pass);
-      setPass("");
-      setConfirm("");
+      // Move to onboarding health survey step
+      setStep("onboarding");
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestoreExisting(e: React.FormEvent) {
+    e.preventDefault();
+    if (!address || check.state !== "cloud") return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const records = await getRecords();
+      const profile = await records.getProfile(address);
+      if (!profile) throw new Error("No backup record found.");
+      await restoreFromProfile(address, profile, restorePass);
+      router.replace("/calendar");
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFinishOnboarding(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
+    try {
+      const cycleDays = parseInt(avgCycle, 10) || 28;
+      const periodDays = parseInt(avgPeriod, 10) || 5;
+
+      await saveHealthProfile({
+        avgCycleLength: cycleDays,
+        avgPeriodLength: periodDays,
+        lastPeriodDate: lastPeriod || undefined,
+        conditions: selectedConditions,
+        notes: healthNotes.trim() || undefined,
+      });
+
+      // If user supplied a last period start date, seed initial period entries
+      if (lastPeriod) {
+        const start = new Date(lastPeriod);
+        for (let i = 0; i < Math.min(periodDays, 10); i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i);
+          const iso = d.toISOString().slice(0, 10);
+          await saveEntry({
+            date: iso,
+            flow: i === 0 ? "heavy" : i === 1 ? "medium" : "light",
+            symptoms: [],
+            source: "manual",
+          });
+        }
+      }
+
       router.replace("/calendar");
     } catch (e) {
       setErr(errMsg(e));
       setBusy(false);
     }
+  }
+
+  function toggleCondition(cond: string) {
+    if (cond === "None / Regular") {
+      setSelectedConditions(["None / Regular"]);
+      return;
+    }
+    setSelectedConditions((prev) => {
+      const withoutNone = prev.filter((c) => c !== "None / Regular");
+      return withoutNone.includes(cond) ? withoutNone.filter((c) => c !== cond) : [...withoutNone, cond];
+    });
   }
 
   if (auth.status === "loading") {
@@ -75,7 +177,7 @@ export default function SignupPage() {
     return (
       <AuthFrame
         title="Create your vault"
-        sub="Step 1 of 2 · Sign in with your email."
+        sub="Sign in with your email to set up your private vault."
         footer={
           <>
             Already have a vault? <Link className="text-accent" href="/unlock">Open it</Link>
@@ -90,40 +192,170 @@ export default function SignupPage() {
   if (check.state === "checking") {
     return (
       <AuthFrame title="Create your vault">
-        <Spinner label="Checking your account…" />
+        <Spinner label="Fetching existing account and wallet…" />
       </AuthFrame>
     );
   }
 
-  if (check.state === "local" || check.state === "cloud") {
+  if (check.state === "local") {
     return (
-      <AuthFrame title="Welcome back" sub={check.state === "local" ? "This device already has your vault." : "Your account already has a vault. Restore it on this device."}>
-        <LinkButton href={check.state === "local" ? "/unlock" : "/restore"} className="w-full">
-          {check.state === "local" ? "Unlock my vault" : "Restore my vault"}
-        </LinkButton>
+      <AuthFrame title="Welcome back" sub="Your vault is already set up on this device.">
+        <Button onClick={() => router.replace("/unlock")} className="w-full">
+          Unlock my vault
+        </Button>
+      </AuthFrame>
+    );
+  }
+
+  // Autofetched existing cloud wallet
+  if (check.state === "cloud") {
+    return (
+      <AuthFrame
+        title="Vault detected"
+        sub={`We found an existing cloud backup for ${email ?? "your account"}. Enter your password to restore it instantly.`}
+      >
+        <form onSubmit={handleRestoreExisting} className="space-y-4">
+          <Field label="Your vault password">
+            <input
+              className="input"
+              type="password"
+              autoComplete="current-password"
+              value={restorePass}
+              onChange={(e) => setRestorePass(e.target.value)}
+              placeholder="Enter your password"
+              autoFocus
+              required
+            />
+          </Field>
+          {err && <ErrorBox message={err} />}
+          <Button type="submit" loading={busy} className="w-full" disabled={!restorePass}>
+            {busy ? "Restoring vault…" : "Unlock & Restore Vault"}
+          </Button>
+          <p className="text-center text-xs text-faint">
+            Need to start fresh?{" "}
+            <button
+              type="button"
+              className="text-accent underline"
+              onClick={() => setCheck({ state: "new" })}
+            >
+              Create new vault instead
+            </button>
+          </p>
+        </form>
+      </AuthFrame>
+    );
+  }
+
+  if (step === "onboarding") {
+    return (
+      <AuthFrame
+        title="Personalize your cycle"
+        sub="Tell us about your cycle history and reproductive health so our private AI can deliver tailored insights."
+      >
+        <form onSubmit={handleFinishOnboarding} className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Average cycle (days)" hint="Usually 21–35 days">
+              <input
+                className="input"
+                type="number"
+                min={15}
+                max={60}
+                value={avgCycle}
+                onChange={(e) => setAvgCycle(e.target.value)}
+                required
+              />
+            </Field>
+            <Field label="Period length (days)" hint="Usually 3–7 days">
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={14}
+                value={avgPeriod}
+                onChange={(e) => setAvgPeriod(e.target.value)}
+                required
+              />
+            </Field>
+          </div>
+
+          <Field label="Last period start date" hint="Optional, but helps predictions start immediately">
+            <input
+              className="input"
+              type="date"
+              value={lastPeriod}
+              onChange={(e) => setLastPeriod(e.target.value)}
+            />
+          </Field>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-text">
+              Reproductive or hormonal conditions affecting your cycle
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {CONDITIONS.map((cond) => {
+                const isSelected = selectedConditions.includes(cond);
+                return (
+                  <button
+                    key={cond}
+                    type="button"
+                    className={`chip ${isSelected ? "border-accent bg-accent/10 text-accent font-semibold" : ""}`}
+                    aria-pressed={isSelected}
+                    onClick={() => toggleCondition(cond)}
+                  >
+                    {cond}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-faint">
+              This helps AI customize symptom correlations and prediction confidence.
+            </p>
+          </div>
+
+          <Field label="Additional cycle or health notes" hint="e.g. tracking for fertility, birth control use, etc.">
+            <textarea
+              className="input min-h-20"
+              value={healthNotes}
+              onChange={(e) => setHealthNotes(e.target.value)}
+              placeholder="Any specifics you'd like your private AI to remember..."
+            />
+          </Field>
+
+          {err && <ErrorBox message={err} />}
+
+          <Button type="submit" loading={busy} className="w-full">
+            {busy ? "Encrypting & saving…" : "Finish & Open Calendar"}
+          </Button>
+          <p className="text-center text-xs text-faint">
+            Everything is encrypted on this device with your password before saving.
+          </p>
+        </form>
       </AuthFrame>
     );
   }
 
   return (
-    <AuthFrame title="Set your vault passphrase" sub="Step 2 of 2 · This passphrase encrypts your data on this device. We never see it and can't reset it.">
+    <AuthFrame
+      title="Create your password"
+      sub="Choose a strong password to encrypt your vault. It never leaves your device and cannot be reset."
+    >
       {check.state === "error" && (
         <div className="mb-4">
           <ErrorBox message={`We couldn't check for an existing vault (${check.message}).`} onRetry={() => setAttempt((a) => a + 1)} />
         </div>
       )}
-      <form onSubmit={create} className="space-y-5">
-        <Field label="Vault passphrase">
+      <form onSubmit={handleCreatePassword} className="space-y-5">
+        <Field label="Create Password">
           <PassphraseField value={pass} onChange={setPass} onStrength={onStrength} userInputs={email ? [email, email.split("@")[0]] : []} autoFocus />
         </Field>
-        <Field label="Type it again">
-          <input className="input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        <Field label="Confirm Password">
+          <input className="input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
         </Field>
         {err && <ErrorBox message={err} />}
         <Button type="submit" loading={busy} className="w-full" disabled={!strength?.ok || !confirm}>
-          {busy ? "Creating your vault…" : "Create my vault"}
+          {busy ? "Setting up vault…" : "Continue to cycle profile"}
         </Button>
-        <p className="text-center text-xs text-faint">If you forget this passphrase, your data cannot be recovered.</p>
+        <p className="text-center text-xs text-faint">If you forget this password, your encrypted data cannot be recovered.</p>
         <p className="text-center text-xs text-faint">
           Only here to see a partner&apos;s cycle? <Link className="text-accent" href="/partner">Open partner view</Link>
         </p>
