@@ -7,7 +7,7 @@ import { startPartnerSync } from "@/lib/partner/partner";
 import { startBackupManager } from "@/lib/backup/manager";
 import { syncProfile } from "@/lib/vault/profileSync";
 import { useAuth, useBackupStatus, useOnline, useUnlocked } from "./hooks";
-import { MoonMark, Spinner, timeAgo } from "./ui";
+import { Spinner, timeAgo } from "./ui";
 
 const NAV = [
   { href: "/calendar", label: "Today", icon: "M12 3v2m0 14v2m9-9h-2M5 12H3m14.5-6.5L16 7M8 16l-1.5 1.5m0-11L8 8m8 8 1.5 1.5M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" },
@@ -88,7 +88,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/calendar" className="flex items-center gap-2">
-            <MoonMark />
             <span className="font-display text-lg">Moonvault</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
@@ -104,8 +103,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           <div className="flex items-center gap-2">
             <SyncBadge />
-            <button onClick={() => lock()} className="rounded-full border border-line p-2 text-muted hover:text-text" aria-label="Lock vault" title="Lock vault">
-              <Icon d="M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Z" />
+            <button onClick={() => lock()} className="rounded-full border border-line px-3 py-1.5 text-sm text-muted hover:text-text" aria-label="Lock vault">
+              Lock
             </button>
           </div>
         </div>

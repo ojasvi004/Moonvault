@@ -32,7 +32,7 @@ export function askInput(entries: Entry[], question: string) {
 
 export function insightsInput(entries: Entry[]) {
   const today = todayISO();
-  const recent = entries.filter((e) => e.date >= addDays(today, -200));
+  const recent = entries.filter((e) => e.date >= addDays(today, -365));
   const stats = computeStats(entries);
   const cd = cycleDays(recent, stats.periods);
   const data = anonymizeEntries(recent, { today, cycleDays: cd })
@@ -44,7 +44,7 @@ export function insightsInput(entries: Entry[]) {
   const now = cycleDay
     ? { cycleDay, phase: phaseFor(cycleDay, stats.avgCycle, stats.avgPeriod), daysToNextPeriod: next ? diffDays(today, next.nextStart) : undefined }
     : undefined;
-  return { stats: statsPayload(entries), today: now, data: data.slice(-180) };
+  return { stats: statsPayload(entries), today: now, data: data.slice(-365) };
 }
 
 export function summaryInput(entries: Entry[]) {

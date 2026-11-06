@@ -2,7 +2,7 @@
 // Read-only report for the person a link was shared with. No account, no
 // wallet: reads the public record, decrypts with the key in the URL fragment.
 import { useEffect, useState } from "react";
-import { MoonMark, Spinner, countdown } from "@/components/ui";
+import { Spinner, countdown } from "@/components/ui";
 import { useNow } from "@/components/hooks";
 import { formatDate } from "@/lib/cycle/dates";
 import { ShareUnavailableError, readShare } from "@/lib/share/share";
@@ -42,7 +42,6 @@ export function DoctorView({ shareId }: { shareId: string }) {
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12">
         <header className="flex items-center justify-between border-b border-[#e4dfe9] pb-4">
           <div className="flex items-center gap-2">
-            <MoonMark className="h-6 w-6" />
             <span className="font-display text-lg">Moonvault</span>
           </div>
           <span className="text-xs text-[#5b5568]">Read-only shared report</span>

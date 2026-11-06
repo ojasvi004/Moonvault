@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { AiInsightsCard } from "@/components/AiInsightsCard";
 import { DayAnalysis } from "@/components/DayAnalysis";
 import { useEntries } from "@/components/hooks";
-import { Card, Disclaimer, LinkButton, Spinner } from "@/components/ui";
+import { Card, LinkButton, Spinner } from "@/components/ui";
 import { computeStats, cycleTimeline, predict, type DayInfo, type Phase } from "@/lib/cycle/cycle";
-import { addDays, diffDays, formatDate, monthGrid, todayISO } from "@/lib/cycle/dates";
+import { diffDays, formatDate, monthGrid, todayISO } from "@/lib/cycle/dates";
 import { getHealthProfile, type HealthProfile } from "@/lib/vault/healthProfile";
 import type { Entry } from "@/lib/types";
 
@@ -112,8 +112,6 @@ export default function CalendarPage() {
         </LinkButton>
       </header>
 
-      {todayInfo && <CycleStrip info={todayInfo} at={at} onPick={(iso) => goTo(iso)} />}
-
       <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         {/* Month grid */}
         <Card className="comic !rounded-3xl">
@@ -214,10 +212,6 @@ export default function CalendarPage() {
           <Stat label="Cycles tracked" value={String(stats.cyclesTracked)} />
           <Stat label="Variability" value={stats.cyclesTracked > 1 ? `±${stats.variability} days` : "—"} />
         </div>
-        <p className="mt-3 text-xs text-faint">{stats.confidenceNote}</p>
-        <div className="mt-2">
-          <Disclaimer />
-        </div>
       </Card>
 
       <AiInsightsCard entries={entries} />
@@ -232,44 +226,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-line bg-card-2/60 px-3 py-2">
       <p className="text-faint">{label}</p>
       <p className="font-semibold text-text">{value}</p>
-    </div>
-  );
-}
-
-function CycleStrip({ info, at, onPick }: { info: DayInfo; at: (iso: string) => DayInfo | null; onPick: (iso: string) => void }) {
-  const days = Array.from({ length: info.cycleLength }, (_, i) => i + 1);
-  const ov = info.ovulationDay;
-  const phaseOf = (cd: number): Phase => at(addDays(info.cycleStart, cd - 1))?.phase ?? "follicular";
-  return (
-    <div className="comic-sm rounded-2xl bg-card p-4">
-      <div className="mb-2 flex items-center justify-between text-xs text-muted">
-        <span className="font-semibold text-text">This cycle</span>
-        <span>
-          Day {info.cycleDay} of ~{info.cycleLength} · ovulation ~day {ov}
-        </span>
-      </div>
-      <div className="flex gap-[3px]" role="list" aria-label="Days of the current cycle">
-        {days.map((cd) => {
-          const p = phaseOf(cd);
-          const isToday = cd === info.cycleDay;
-          const fertile = cd >= ov - 5 && cd <= ov + 1;
-          return (
-            <button
-              key={cd}
-              role="listitem"
-              onClick={() => onPick(addDays(info.cycleStart, cd - 1))}
-              title={`Cycle day ${cd} · ${PHASE[p].short}${fertile ? " · fertile" : ""}`}
-              className={`relative h-7 flex-1 rounded-[4px] transition hover:opacity-80 ${PHASE[p].bar} ${isToday ? "outline-2 outline-offset-2 outline-ink" : ""} ${cd > info.cycleDay ? "opacity-45" : ""}`}
-            >
-              {cd === ov && <span className="absolute inset-0 grid place-items-center text-[10px] text-white">★</span>}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex justify-between text-[10px] text-faint">
-        <span>Day 1</span>
-        <span>Day {info.cycleLength}</span>
-      </div>
     </div>
   );
 }

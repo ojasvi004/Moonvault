@@ -5,7 +5,7 @@ import { AuthFrame } from "@/components/AuthFrame";
 import { EmailLogin } from "@/components/EmailLogin";
 import { useAuth } from "@/components/hooks";
 import { PartnerSummary } from "@/components/PartnerSummary";
-import { Button, Card, ErrorBox, MoonMark, Spinner, errMsg } from "@/components/ui";
+import { Button, Card, ErrorBox, Spinner, errMsg } from "@/components/ui";
 import { signOut } from "@/lib/auth/auth";
 import { leavePartner, loadPartnerViews, type PartnerView } from "@/lib/partner/partner";
 
@@ -68,7 +68,6 @@ export default function PartnerPage() {
     <div className="flex min-h-dvh flex-col">
       <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <MoonMark />
           <span className="font-display text-lg">Moonvault</span>
         </Link>
         <div className="flex items-center gap-3 text-sm">

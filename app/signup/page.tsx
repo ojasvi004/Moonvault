@@ -13,6 +13,7 @@ import { createVault } from "@/lib/vault/vault";
 import { restoreFromProfile } from "@/lib/backup/restore";
 import { saveHealthProfile } from "@/lib/vault/healthProfile";
 import { saveEntry } from "@/lib/vault/entries";
+import { addDays, todayISO } from "@/lib/cycle/dates";
 import type { Strength } from "@/lib/vault/passphrase";
 
 type Check =
@@ -50,6 +51,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<"password" | "onboarding">("password");
   const [avgCycle, setAvgCycle] = useState("28");
   const [avgPeriod, setAvgPeriod] = useState("5");
+  const [pastCycles, setPastCycles] = useState("5");
   const [lastPeriod, setLastPeriod] = useState("");
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [healthNotes, setHealthNotes] = useState("");
@@ -127,6 +129,17 @@ export default function SignupPage() {
     try {
       const cycleDays = parseInt(avgCycle, 10) || 28;
       const periodDays = parseInt(avgPeriod, 10) || 5;
+      const cycleCount = parseInt(pastCycles, 10) || 5;
+      const today = todayISO();
+      const earliest = addDays(today, -365);
+      if (lastPeriod) {
+        if (cycleCount < 5 || cycleCount > 6 || lastPeriod < earliest || lastPeriod > today) {
+          throw new Error("Choose 5 or 6 cycles and a most recent period date within the last 12 months.");
+        }
+        if (addDays(lastPeriod, periodDays - 1) > today || addDays(lastPeriod, -(cycleCount - 1) * cycleDays) < earliest) {
+          throw new Error("Those cycle details extend outside the available 12-month history window.");
+        }
+      }
 
       await saveHealthProfile({
         avgCycleLength: cycleDays,
@@ -136,19 +149,19 @@ export default function SignupPage() {
         notes: healthNotes.trim() || undefined,
       });
 
-      // If user supplied a last period start date, seed initial period entries
+      // If user supplied history, seed each period so cycle stats and AI insights
+      // have real historical starts immediately after onboarding.
       if (lastPeriod) {
-        const start = new Date(lastPeriod);
-        for (let i = 0; i < Math.min(periodDays, 10); i++) {
-          const d = new Date(start);
-          d.setDate(d.getDate() + i);
-          const iso = d.toISOString().slice(0, 10);
-          await saveEntry({
-            date: iso,
-            flow: i === 0 ? "heavy" : i === 1 ? "medium" : "light",
-            symptoms: [],
-            source: "manual",
-          });
+        for (let cycle = 0; cycle < cycleCount; cycle++) {
+          const start = addDays(lastPeriod, -(cycleCount - 1 - cycle) * cycleDays);
+          for (let day = 0; day < periodDays; day++) {
+            await saveEntry({
+              date: addDays(start, day),
+              flow: day === 0 ? "heavy" : day === 1 ? "medium" : "light",
+              symptoms: [],
+              source: "manual",
+            });
+          }
         }
       }
 
@@ -281,14 +294,28 @@ export default function SignupPage() {
             </Field>
           </div>
 
-          <Field label="Last period start date" hint="Optional, but helps predictions start immediately">
-            <input
-              className="input"
-              type="date"
-              value={lastPeriod}
-              onChange={(e) => setLastPeriod(e.target.value)}
-            />
-          </Field>
+          <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4">
+            <p className="text-sm font-semibold">Add your past cycle history</p>
+            <p className="mt-1 text-xs text-muted">This creates period-day entries for your recent cycles so AI insights and predictions start with your own history.</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Cycles to add" hint="Choose 5 or 6">
+                <select className="input" value={pastCycles} onChange={(e) => setPastCycles(e.target.value)}>
+                  <option value="5">5 cycles</option>
+                  <option value="6">6 cycles</option>
+                </select>
+              </Field>
+              <Field label="Most recent period start" hint="Optional, but recommended">
+                <input
+                  className="input"
+                  type="date"
+                  min={addDays(todayISO(), -365)}
+                  max={todayISO()}
+                  value={lastPeriod}
+                  onChange={(e) => setLastPeriod(e.target.value)}
+                />
+              </Field>
+            </div>
+          </div>
 
           <div>
             <label className="mb-2 block text-sm font-medium text-text">

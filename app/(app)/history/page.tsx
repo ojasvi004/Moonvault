@@ -1,9 +1,10 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useEntries } from "@/components/hooks";
-import { Card, Disclaimer, LinkButton, PageTitle, Spinner } from "@/components/ui";
+import { HistoricalCycleDialog } from "@/components/HistoricalCycleDialog";
+import { Card, Button, LinkButton, PageTitle, Spinner } from "@/components/ui";
 import { computeStats } from "@/lib/cycle/cycle";
 import { formatDate } from "@/lib/cycle/dates";
 
@@ -14,6 +15,7 @@ const SleepChart = dynamic(() => import("@/components/HistoryCharts").then((m) =
 
 export default function HistoryPage() {
   const { entries } = useEntries();
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const model = useMemo(() => {
     if (!entries) return null;
@@ -32,7 +34,11 @@ export default function HistoryPage() {
     return (
       <div>
         <PageTitle eyebrow="History" title="Your story starts here" sub="Once you log a few days, your trends and cycle history will appear here." />
-        <LinkButton href="/log">Log your first day</LinkButton>
+        <div className="flex flex-wrap gap-3">
+          <LinkButton href="/log">Log your first day</LinkButton>
+          <Button type="button" variant="soft" onClick={() => setHistoryDialogOpen(true)}>Add past cycles</Button>
+        </div>
+        <HistoricalCycleDialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} />
       </div>
     );
   }
@@ -41,7 +47,12 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <PageTitle eyebrow="History" title="Trends over time" sub={`${entries.length} day${entries.length === 1 ? "" : "s"} logged · ${stats.periods.length} period${stats.periods.length === 1 ? "" : "s"}`} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageTitle eyebrow="History" title="Trends over time" sub={`${entries.length} day${entries.length === 1 ? "" : "s"} logged · ${stats.periods.length} period${stats.periods.length === 1 ? "" : "s"}`} />
+        <Button type="button" variant="soft" className="mb-6 shrink-0 sm:mb-8" onClick={() => setHistoryDialogOpen(true)}>
+          Add past cycles
+        </Button>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
@@ -93,9 +104,7 @@ export default function HistoryPage() {
           </tbody>
         </table>
       </Card>
-      <div className="mt-4">
-        <Disclaimer />
-      </div>
+      <HistoricalCycleDialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} />
     </div>
   );
 }

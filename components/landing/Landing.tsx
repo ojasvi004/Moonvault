@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { MoonMark } from "@/components/ui";
 import AnimatedGradient, { PEACH_PASTEL } from "@/components/fancy/AnimatedGradientSvg";
 import NumberTicker from "@/components/fancy/BasicNumberTicker";
 import CenterUnderline from "@/components/fancy/CenterUnderline";
@@ -39,7 +38,7 @@ const FLOW_STEPS: { tag: string; title: string; body: string; detail: ReactNode;
     tag: "01 · Sign in",
     title: "Your email opens a wallet, not a database row.",
     body: "Signing in with an email code creates a self-custodial thirdweb in-app wallet. Its address is your identity on the network. It signs your records, so only you can create, extend or delete them. It never encrypts health data.",
-    detail: <Mono lines={["email → one-time code", "→ in-app wallet 0xA1c4…92fE", "→ owns your Arkiv records"]} />,
+    detail: <Mono lines={["email → one-time code", "→ in-app wallet", "→ owns your Arkiv records"]} />,
     tone: "bg-card",
   },
   {
@@ -206,7 +205,6 @@ function Nav() {
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <MoonMark />
           <span className="font-display text-xl">Moonvault</span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm text-muted md:flex" aria-label="Sections">
@@ -607,7 +605,6 @@ function Footer() {
       <div className="mx-auto grid w-full max-w-6xl gap-8 sm:grid-cols-2 md:grid-cols-4">
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <MoonMark />
             <span className="font-display text-xl text-text">Moonvault</span>
           </div>
           <p className="text-xs leading-relaxed text-muted">A private, encrypted period tracker with verifiable AI on 0G and ownable records on Arkiv.</p>

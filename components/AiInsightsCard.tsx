@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRecords } from "@/components/hooks";
+import { HistoricalCycleDialog } from "@/components/HistoricalCycleDialog";
 import { useAiCall } from "@/components/useAiCall";
 import { AiText } from "@/components/AiText";
 import { SpeakButton } from "@/components/SpeakButton";
-import { Button, Card, Disclaimer, ErrorBox, Spinner, VerificationId, timeAgo } from "@/components/ui";
+import { Button, Card, ErrorBox, Spinner, VerificationId, timeAgo } from "@/components/ui";
 import { insightsInput } from "@/lib/ai/inputs";
 import type { Entry } from "@/lib/types";
 import { PROFILE_RECORD_ID } from "@/lib/vault/healthProfile";
@@ -27,6 +28,7 @@ export function AiInsightsCard({ entries, className = "", showAskLink = true }: 
   const call = useAiCall("insights", "insights");
   const run = call.run;
   const started = useRef(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const latest = useMemo(
     () => (history ?? []).filter((h) => h.kind === "insights" && h.id !== PROFILE_RECORD_ID).sort((a, b) => b.createdAt - a.createdAt)[0],
@@ -61,14 +63,19 @@ export function AiInsightsCard({ entries, className = "", showAskLink = true }: 
           <h2 className="font-display mt-1 text-2xl">Your patterns</h2>
           {shown && !loading && <p className="mt-0.5 text-xs text-faint">Updated {shown.at ? timeAgo(shown.at) : "just now"}</p>}
         </div>
-        {enough && (
-          <div className="flex items-center gap-2">
-            {shown && !loading && <SpeakButton text={shown.text} />}
-            <Button variant="soft" className="min-h-9 px-3 py-1.5 text-xs" loading={loading} onClick={() => void call.run(insightsInput(entries))}>
-              Refresh
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" className="min-h-9 px-3 py-1.5 text-xs" onClick={() => setHistoryDialogOpen(true)}>
+            Add past cycles
+          </Button>
+          {enough && (
+            <>
+              {shown && !loading && <SpeakButton text={shown.text} />}
+              <Button variant="soft" className="min-h-9 px-3 py-1.5 text-xs" loading={loading} onClick={() => void call.run(insightsInput(entries))}>
+                Refresh
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {!enough ? (
@@ -102,14 +109,14 @@ export function AiInsightsCard({ entries, className = "", showAskLink = true }: 
         </>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <Disclaimer />
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
         {showAskLink && enough && (
           <Link href="/ask" className="text-sm text-accent hover:underline">
             Ask a question →
           </Link>
         )}
       </div>
+      <HistoricalCycleDialog open={historyDialogOpen} onClose={() => setHistoryDialogOpen(false)} />
     </Card>
   );
 }
