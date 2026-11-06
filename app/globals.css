@@ -20,6 +20,8 @@
   --ok: #7fd6a8;
   --warn: #f5c26b;
   --bad: #ff8a8a;
+  --line-strong: #4a3f73;
+  --shadow: #07050d;
 }
 
 @theme inline {
@@ -41,6 +43,8 @@
   --color-ok: var(--ok);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-ink: var(--line-strong);
+  --color-shade: var(--shadow);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Noto Serif", ui-serif, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -145,6 +149,53 @@ body {
 
 .animate-spin-slow {
   animation: spin 24s linear infinite;
+}
+
+/* Thin outline + flat offset shadow. */
+.comic {
+  border: 1px solid var(--line-strong);
+  box-shadow: 4px 4px 0 0 var(--shadow);
+}
+.comic-sm {
+  border: 1px solid var(--line-strong);
+  box-shadow: 2px 2px 0 0 var(--shadow);
+}
+.comic-shadow {
+  box-shadow: 4px 4px 0 0 var(--shadow);
+}
+.comic-hover {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.comic-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--shadow);
+}
+
+/* Hatched fill used for predicted days on the calendar. */
+.hatch-rose {
+  background-image: repeating-linear-gradient(135deg, #ec7c8e33 0 4px, transparent 4px 8px);
+}
+
+/* fancy/animated-gradient-with-svg */
+@keyframes background-gradient {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(calc(100% * var(--tx-1, 1)), calc(100% * var(--ty-1, 1)));
+  }
+  40% {
+    transform: translate(calc(100% * var(--tx-2, -1)), calc(100% * var(--ty-2, 1)));
+  }
+  60% {
+    transform: translate(calc(100% * var(--tx-3, 1)), calc(100% * var(--ty-3, -1)));
+  }
+  80% {
+    transform: translate(calc(100% * var(--tx-4, -1)), calc(100% * var(--ty-4, -1)));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

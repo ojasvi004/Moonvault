@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
-import { MOCK_CODE, sendCode, verifyCode } from "@/lib/auth/auth";
-import { isMockAuth } from "@/lib/config";
-import { Button, ErrorBox, Field, Notice, errMsg } from "./ui";
+import { sendCode, verifyCode } from "@/lib/auth/auth";
+import { Button, ErrorBox, Field, errMsg } from "./ui";
 
 /** Email + one-time code sign-in. */
 export function EmailLogin({ cta = "Continue" }: { cta?: string }) {
@@ -11,7 +10,6 @@ export function EmailLogin({ cta = "Continue" }: { cta?: string }) {
   const [step, setStep] = useState<"email" | "code">("email");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const mock = isMockAuth();
 
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -44,22 +42,13 @@ export function EmailLogin({ cta = "Continue" }: { cta?: string }) {
   if (step === "email") {
     return (
       <form onSubmit={submitEmail} className="space-y-4">
-        <Field label="Email" hint="We'll email you a 6-digit code. Your email is only used to sign in.">
+        <Field label="Email" hint="We'll email you a 6-digit code. Your wallet is created or fetched automatically. No seed phrase.">
           <input className="input" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
         </Field>
         {err && <ErrorBox message={err} />}
         <Button type="submit" loading={busy} className="w-full">
           {cta}
         </Button>
-        <div className="flex items-center justify-center gap-1.5 text-xs text-faint">
-          <span>Powered by</span>
-          <span className="font-semibold text-text">thirdweb</span>
-        </div>
-        {mock && (
-          <Notice tone="warn">
-            <strong>Running in Mock/Demo Mode:</strong> Thirdweb Client ID is not configured or mock services are enabled. In this mode, authentication is local to this browser session. Use code <code>{MOCK_CODE}</code> to test.
-          </Notice>
-        )}
       </form>
     );
   }

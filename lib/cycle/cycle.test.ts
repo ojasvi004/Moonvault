@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Entry } from "@/lib/types";
-import { computeStats, cycleDays, findPeriods, phaseFor, predict } from "./cycle";
+import { computeStats, cycleDays, cycleTimeline, findPeriods, phaseFor, predict } from "./cycle";
 import { addDays } from "./dates";
 
 function period(start: string, days: number): Entry[] {
@@ -55,5 +55,38 @@ describe("cycle math", () => {
     expect(phaseFor(2, 28, 5)).toBe("menstrual");
     expect(phaseFor(14, 28, 5)).toBe("ovulation");
     expect(phaseFor(22, 28, 5)).toBe("luteal");
+  });
+});
+
+describe("cycle timeline", () => {
+  const entries = [...period("2026-01-01", 5), ...period("2026-01-31", 5), ...period("2026-02-28", 5)];
+  const stats = computeStats(entries);
+  const byDate = new Map(entries.map((e) => [e.date, e]));
+  const at = cycleTimeline(stats, byDate, "2026-03-10");
+
+  it("returns null before the first logged period", () => {
+    expect(at("2025-12-31")).toBeNull();
+  });
+
+  it("uses the real length of a completed cycle", () => {
+    const d = at("2026-01-10")!;
+    expect(d.cycleLength).toBe(30);
+    expect(d.cycleDay).toBe(10);
+    expect(d.ovulationDay).toBe(16);
+    expect(at("2026-01-16")!.ovulation).toBe(true);
+    expect(at("2026-01-16")!.phase).toBe("ovulation");
+    expect(at("2026-01-11")!.fertile).toBe(true);
+    expect(at("2026-01-10")!.fertile).toBe(false);
+    expect(at("2026-01-25")!.phase).toBe("luteal");
+  });
+
+  it("marks logged bleeding as menstrual and projects future periods", () => {
+    expect(at("2026-02-28")!.bleeding).toBe(true);
+    expect(at("2026-02-28")!.phase).toBe("menstrual");
+    const next = at(addDays("2026-02-28", stats.avgCycle))!;
+    expect(next.cycleDay).toBe(1);
+    expect(next.predicted).toBe(true);
+    expect(next.predictedPeriod).toBe(true);
+    expect(next.phase).toBe("menstrual");
   });
 });

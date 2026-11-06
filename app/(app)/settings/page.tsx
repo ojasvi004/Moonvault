@@ -5,7 +5,7 @@ import { useAuth, useBackupStatus, useOnline } from "@/components/hooks";
 import { Button, Card, ErrorBox, Notice, PageTitle, ProgressBar, errMsg, timeAgo } from "@/components/ui";
 import { signOut } from "@/lib/auth/auth";
 import { backupNow } from "@/lib/backup/manager";
-import { AUTO_LOCK_MS, MOCK_SERVICES } from "@/lib/config";
+import { AUTO_LOCK_MS } from "@/lib/config";
 import { getMeta, wipeLocalVault, type VaultMeta } from "@/lib/vault/db";
 import { syncProfile } from "@/lib/vault/profileSync";
 import { lock } from "@/lib/vault/session";
@@ -113,7 +113,7 @@ export default function SettingsPage() {
         <Card>
           <h2 className="font-display text-2xl">Restore key</h2>
           <p className="mt-1 text-sm text-muted">
-            A passphrase-locked copy of your vault key is kept with your account so you can restore on any device. It is useless without your passphrase.
+            A password-locked copy of your vault key is kept with your account so you can restore on any device. It is useless without your password.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className={`rounded-full px-3 py-1 text-xs ${meta?.profileSynced ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"}`}>{meta?.profileSynced ? "Saved to your account" : "Not saved yet"}</span>
@@ -132,11 +132,6 @@ export default function SettingsPage() {
             <li>• Your vault locks itself after {Math.round(AUTO_LOCK_MS / 60000)} minutes without activity.</li>
             <li>• AI requests contain only the minimum, anonymized data needed, and show a Verification ID.</li>
           </ul>
-          {MOCK_SERVICES && (
-            <div className="mt-4">
-              <Notice tone="warn">Demo mode is on: cloud backup, account records and AI are simulated on this device.</Notice>
-            </div>
-          )}
           <div className="mt-5 flex flex-wrap gap-3">
             <Button variant="ghost" onClick={() => lock()}>
               Lock now

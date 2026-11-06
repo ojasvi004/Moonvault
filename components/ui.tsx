@@ -103,11 +103,11 @@ export function Notice({ children, tone = "info" }: { children: ReactNode; tone?
 }
 
 /** Small, copyable verification ID shown on every AI result. */
-export function VerificationId({ ids, mock }: { ids: string[]; mock?: boolean }) {
+export function VerificationId({ ids }: { ids: string[]; mock?: boolean }) {
   const [copied, setCopied] = useState<string | null>(null);
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-faint">
-      <span title="Private compute request ID for this answer">Verification ID{ids.length > 1 ? "s" : ""}{mock ? " (demo)" : ""}:</span>
+      <span title="Private compute request ID for this answer">Verification ID{ids.length > 1 ? "s" : ""}:</span>
       {ids.map((id) => (
         <button
           key={id}

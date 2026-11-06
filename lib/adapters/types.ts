@@ -79,7 +79,7 @@ export interface SharesAdapter {
 
 // ------------------------------------------------------------- AI (0G PC)
 
-export type AiTask = "ask" | "insights" | "summary" | "structure";
+export type AiTask = "ask" | "insights" | "summary" | "structure" | "day";
 
 export type AiResponse = {
   text: string;

@@ -1,45 +1,43 @@
 "use client";
-import { useEffect, useState } from "react";
+// Adapted from fancy components "Basic Number Ticker" (MIT, see LICENSE.md).
+// Added: starts when scrolled into view, optional decimals.
+import { useEffect, useRef } from "react";
+import { animate, motion, useInView, useMotionValue, useTransform, type ValueAnimationTransition } from "motion/react";
+import { cn } from "./cn";
 
-export function BasicNumberTicker({
-  value,
-  duration = 1500,
-  prefix = "",
-  suffix = "",
-  className = "",
-}: {
-  value: number;
-  duration?: number;
-  prefix?: string;
-  suffix?: string;
+interface NumberTickerProps {
+  from?: number;
+  target: number;
+  transition?: ValueAnimationTransition;
+  decimals?: number;
   className?: string;
-}) {
-  const [current, setCurrent] = useState(0);
+  onComplete?: () => void;
+}
+
+export default function NumberTicker({
+  from = 0,
+  target,
+  transition = { duration: 2.2, type: "tween", ease: "easeInOut" },
+  decimals = 0,
+  className,
+  onComplete,
+}: NumberTickerProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const count = useMotionValue(from);
+  const display = useTransform(count, (v) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
+  const cfg = useRef({ transition, onComplete });
 
   useEffect(() => {
-    let startTimestamp: number | null = null;
-    let frameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCurrent(Math.floor(progress * value));
-      if (progress < 1) {
-        frameId = requestAnimationFrame(step);
-      } else {
-        setCurrent(value);
-      }
-    };
-
-    frameId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frameId);
-  }, [value, duration]);
+    if (!inView) return;
+    count.set(from);
+    const controls = animate(count, target, { ...cfg.current.transition, onComplete: () => cfg.current.onComplete?.() });
+    return () => controls.stop();
+  }, [inView, from, target, count]);
 
   return (
-    <span className={`font-mono font-bold tracking-tight ${className}`}>
-      {prefix}
-      {current.toLocaleString()}
-      {suffix}
-    </span>
+    <motion.span ref={ref} className={cn("tabular-nums", className)}>
+      {display}
+    </motion.span>
   );
 }

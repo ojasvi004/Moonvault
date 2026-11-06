@@ -67,7 +67,7 @@ export default function UnlockPage() {
       await unlockVault(pass);
       setPass("");
     } catch (e) {
-      setErr(e instanceof WrongPassphraseError ? "That passphrase didn't unlock your vault. Check it and try again." : errMsg(e));
+      setErr(e instanceof WrongPassphraseError ? "That password didn't unlock your vault. Check it and try again." : errMsg(e));
     } finally {
       setBusy(false);
     }
@@ -108,7 +108,7 @@ export default function UnlockPage() {
     return (
       <AuthFrame
         title={cloud === "yes" ? "Your vault isn't on this device yet" : "No vault on this device"}
-        sub={cloud === "yes" ? "Restore it from your encrypted cloud backup with your passphrase." : "We couldn't check your account right now. Restore your vault, or create a new one."}
+        sub={cloud === "yes" ? "Restore it from your encrypted cloud backup with your password." : "We couldn't check your account right now. Restore your vault, or create a new one."}
         footer={
           <>
             Here to see a partner&apos;s cycle? <Link className="text-accent" href="/partner">Open partner view</Link>

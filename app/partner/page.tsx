@@ -7,7 +7,6 @@ import { useAuth } from "@/components/hooks";
 import { PartnerSummary } from "@/components/PartnerSummary";
 import { Button, Card, ErrorBox, MoonMark, Spinner, errMsg } from "@/components/ui";
 import { signOut } from "@/lib/auth/auth";
-import { MOCK_SERVICES } from "@/lib/config";
 import { leavePartner, loadPartnerViews, type PartnerView } from "@/lib/partner/partner";
 
 /** What a partner sees after signing in. No vault or passphrase needed. */
@@ -81,7 +80,6 @@ export default function PartnerPage() {
           </button>
         </div>
       </header>
-      {MOCK_SERVICES && <div className="bg-warn/15 px-4 py-1 text-center text-[11px] text-warn">Demo mode: cloud services are simulated.</div>}
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-6 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Partner view</p>

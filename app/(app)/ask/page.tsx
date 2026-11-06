@@ -9,6 +9,7 @@ import { Button, Card, Disclaimer, ErrorBox, LinkButton, PageTitle, Spinner, Ver
 import { askInput, summaryInput } from "@/lib/ai/inputs";
 import { buildSummaryPdf } from "@/lib/ai/pdf";
 import { computeStats } from "@/lib/cycle/cycle";
+import { PROFILE_RECORD_ID } from "@/lib/vault/healthProfile";
 import { todayISO } from "@/lib/cycle/dates";
 
 const SUGGESTIONS = ["When do my cramps usually start?", "Is my cycle getting longer?", "How does my sleep change before my period?", "What should I mention to my doctor?"];
@@ -64,7 +65,7 @@ export default function AskPage() {
     }
   }
 
-  const recent = (history ?? []).filter((h) => h.kind !== "voice").sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
+  const recent = (history ?? []).filter((h) => h.kind !== "voice" && h.kind !== "day" && h.id !== PROFILE_RECORD_ID).sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
 
   return (
     <div>

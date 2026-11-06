@@ -41,7 +41,7 @@ export default function HistoryPage() {
 
   return (
     <div>
-      <PageTitle eyebrow="History" title="Trends over time" sub={`${entries.length} days logged · ${stats.periods.length} periods`} />
+      <PageTitle eyebrow="History" title="Trends over time" sub={`${entries.length} day${entries.length === 1 ? "" : "s"} logged · ${stats.periods.length} period${stats.periods.length === 1 ? "" : "s"}`} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>

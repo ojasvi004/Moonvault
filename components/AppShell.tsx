@@ -6,7 +6,6 @@ import { isUnlocked, lock } from "@/lib/vault/session";
 import { startPartnerSync } from "@/lib/partner/partner";
 import { startBackupManager } from "@/lib/backup/manager";
 import { syncProfile } from "@/lib/vault/profileSync";
-import { MOCK_SERVICES } from "@/lib/config";
 import { useAuth, useBackupStatus, useOnline, useUnlocked } from "./hooks";
 import { MoonMark, Spinner, timeAgo } from "./ui";
 
@@ -86,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href="/calendar" className="flex items-center gap-2">
             <MoonMark />
@@ -110,15 +109,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
-        {MOCK_SERVICES && (
-          <div className="bg-warn/15 px-4 py-1 text-center text-[11px] text-warn">Demo mode: cloud services are simulated on this device.</div>
-        )}
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:pb-12 md:pt-10">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/70 bg-bg/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden" aria-label="Main">
-        <ul className="grid grid-cols-6">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden" aria-label="Main">
+        <ul className="grid grid-cols-7">
           {NAV.map((n) => {
             const active = path.startsWith(n.href);
             return (

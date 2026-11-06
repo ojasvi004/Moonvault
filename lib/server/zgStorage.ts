@@ -32,7 +32,20 @@ async function readLocalBlob(root: string): Promise<Uint8Array | null> {
   }
 }
 
-export async function zgUpload(bytes: Uint8Array): Promise<{ root: string; txHash?: string }> {
+// Cache the signer's balance check so an unfunded relay doesn't make every
+// backup wait on an upload that cannot pay for its transaction.
+let fundedCheck: { at: number; funded: boolean } | null = null;
+async function signerFunded(signer: import("ethers").Wallet): Promise<boolean> {
+  if (fundedCheck && Date.now() - fundedCheck.at < 5 * 60_000) return fundedCheck.funded;
+  const balance = await signer.provider!.getBalance(signer.address).catch(() => null);
+  // Unknown (RPC hiccup) counts as funded so we still try.
+  const funded = balance === null ? true : balance > 0n;
+  fundedCheck = { at: Date.now(), funded };
+  if (!funded) console.warn(`[0G Storage] Signer ${signer.address} has no testnet balance; keeping ciphertext in the server cache only. Fund it at https://faucet.0g.ai`);
+  return funded;
+}
+
+export async function zgUpload(bytes: Uint8Array): Promise<{ root: string; txHash?: string; anchored: boolean }> {
   const [{ Indexer, MemData }] = await Promise.all([loadSdk()]);
   const file = new MemData(bytes);
   const [tree, treeErr] = await file.merkleTree();
@@ -49,21 +62,22 @@ export async function zgUpload(bytes: Uint8Array): Promise<{ root: string; txHas
       const { ethers } = await import("ethers");
       const provider = new ethers.JsonRpcProvider(serverEnv.zgEvmRpc);
       const signer = new ethers.Wallet(serverEnv.zgStorageKey, provider);
+      if (!(await signerFunded(signer))) return { root, anchored: false };
       const indexer = new Indexer(serverEnv.zgIndexerRpc);
       const [tx, err] = await indexer.upload(file, serverEnv.zgEvmRpc, signer as never, { skipIfFinalized: true });
       if (err) {
-        if (/already (exists|uploaded|finalized)/i.test(err.message)) return { root };
+        if (/already (exists|uploaded|finalized)/i.test(err.message)) return { root, anchored: true };
         console.warn("[0G Storage] Testnet anchor notice:", err.message);
       } else if (tx) {
         const txHash = "txHash" in tx ? tx.txHash : tx.txHashes[0];
-        return { root, txHash };
+        return { root, txHash, anchored: true };
       }
     } catch (err) {
       console.warn("[0G Storage] Testnet upload deferred; ciphertext safely stored in cloud backup:", err);
     }
   }
 
-  return { root };
+  return { root, anchored: false };
 }
 
 export async function zgDownload(root: string): Promise<Uint8Array> {

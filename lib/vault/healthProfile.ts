@@ -10,7 +10,8 @@ export type HealthProfile = {
   updatedAt: number;
 };
 
-const PROFILE_RECORD_ID = "user-health-profile";
+/** Stored in the "ai" record store for historical reasons; AI result views must skip it. */
+export const PROFILE_RECORD_ID = "user-health-profile";
 
 export async function getHealthProfile(): Promise<HealthProfile | null> {
   const all = await listRecords("ai");

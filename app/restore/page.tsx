@@ -52,7 +52,7 @@ export default function RestorePage() {
       setPhase({ k: "done", result });
     } catch (e) {
       if (e instanceof WrongPassphraseError) {
-        setPassErr("That passphrase didn't unlock this vault. Check it and try again.");
+        setPassErr("That password didn't unlock this vault. Check it and try again.");
         setPhase({ k: "ready", profile });
       } else if (e instanceof CorruptBackupError) {
         setPhase({ k: "failed", profile, msg: e.message, retryable: true });
@@ -129,7 +129,7 @@ export default function RestorePage() {
             }}
             className="space-y-4"
           >
-            <Field label="Vault passphrase">
+            <Field label="Vault password">
               <input className="input" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} disabled={restoring} autoFocus />
             </Field>
             {passErr && <ErrorBox message={passErr} />}

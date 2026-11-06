@@ -1,6 +1,6 @@
 // Build the small, anonymized payloads for each AI task. Decryption happens
 // in the browser; only these excerpts are sent.
-import { computeStats, cycleDays, phaseFor, predict } from "@/lib/cycle/cycle";
+import { computeStats, cycleDays, cycleTimeline, phaseFor, predict } from "@/lib/cycle/cycle";
 import { addDays, diffDays, todayISO } from "@/lib/cycle/dates";
 import type { Entry } from "@/lib/types";
 import { anonymizeEntries, selectRelevant } from "./anonymize";
@@ -54,6 +54,47 @@ export function summaryInput(entries: Entry[]) {
   return {
     stats: statsPayload(recent),
     data: anonymizeEntries(recent, { today, includeNotes: true, cycleDays: cycleDays(recent, stats.periods) }).slice(-183),
+  };
+}
+
+/** One selected day: where it sits in the cycle, nearby days, and the same cycle day in past cycles. */
+export function dayInput(entries: Entry[], date: string, overrides?: { avgCycle?: number; avgPeriod?: number }) {
+  const today = todayISO();
+  const base = computeStats(entries);
+  const stats = { ...base, avgCycle: overrides?.avgCycle ?? base.avgCycle, avgPeriod: overrides?.avgPeriod ?? base.avgPeriod };
+  const byDate = new Map(entries.map((e) => [e.date, e]));
+  const at = cycleTimeline(stats, byDate, today);
+  const info = at(date);
+  const cd = cycleDays(entries, stats.periods);
+
+  const nearbyEntries = entries.filter((e) => Math.abs(diffDays(date, e.date)) <= 3);
+  const nearby = anonymizeEntries(nearbyEntries, { today, includeNotes: true, cycleDays: cd });
+
+  // Same cycle day (+/-1) in earlier logged cycles.
+  const same = info
+    ? entries.filter((e) => {
+        if (e.date >= info.cycleStart) return false;
+        const d = at(e.date);
+        return !!d && !d.predicted && Math.abs(d.cycleDay - info.cycleDay) <= 1;
+      })
+    : [];
+  const sameDayHistory = anonymizeEntries(same, { today, cycleDays: cd }).slice(-24);
+
+  const e = byDate.get(date);
+  return {
+    stats: statsPayload(entries),
+    day: {
+      daysAgo: diffDays(date, today),
+      cycleDay: info?.cycleDay,
+      cycleLength: info?.cycleLength,
+      phase: info?.phase,
+      fertility: info?.fertility,
+      ovulationDay: info?.ovulationDay,
+      isPrediction: info ? info.predicted || date > today : undefined,
+      logged: e ? anonymizeEntries([e], { today, includeNotes: true })[0] : null,
+    },
+    nearby,
+    sameDayHistory,
   };
 }
 

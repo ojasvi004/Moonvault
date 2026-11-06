@@ -141,3 +141,89 @@ export function dayKind(date: string, entriesByDate: Map<string, Entry>, preds: 
   }
   return null;
 }
+
+// ------------------------------------------------------------------ day timeline
+
+export type DayInfo = {
+  /** 1 = first day of the period that started this cycle. */
+  cycleDay: number;
+  cycleLength: number;
+  cycleStart: string;
+  phase: Phase;
+  /** Bleeding logged on this day. */
+  bleeding: boolean;
+  /** Expected (not logged) period day of a future or overdue cycle. */
+  predictedPeriod: boolean;
+  fertile: boolean;
+  ovulation: boolean;
+  /** Estimated cycle day of ovulation for this cycle. */
+  ovulationDay: number;
+  /** True when this day belongs to a cycle that has not been logged yet. */
+  predicted: boolean;
+  fertility: "low" | "medium" | "high" | "peak";
+};
+
+/**
+ * Builds a lookup that places any date in a cycle: logged cycles use their real
+ * length (start to next start), the current and future cycles use the average.
+ * Dates before the first logged period return null.
+ */
+export function cycleTimeline(stats: CycleStats, entriesByDate: Map<string, Entry>, today: string) {
+  const periods = stats.periods;
+  const avgCycle = stats.avgCycle;
+  const avgPeriod = stats.avgPeriod;
+
+  return (date: string): DayInfo | null => {
+    if (!periods.length || date < periods[0].start) return null;
+    let i = periods.length - 1;
+    while (i > 0 && periods[i].start > date) i--;
+    const p = periods[i];
+    const nextStart = periods[i + 1]?.start;
+    const actualLen = nextStart ? diffDays(p.start, nextStart) : undefined;
+
+    let cycleStart = p.start;
+    let cycleLength = avgCycle;
+    let periodLength = p.length;
+    let predicted = false;
+
+    if (actualLen && actualLen <= Math.max(45, avgCycle * 1.6)) {
+      cycleLength = actualLen;
+    } else {
+      // Current cycle, or a long gap (likely missed logging): project forward with the average.
+      const diff = diffDays(p.start, date);
+      const k = Math.floor(diff / avgCycle);
+      if (k > 0) {
+        cycleStart = addDays(p.start, k * avgCycle);
+        periodLength = avgPeriod;
+        predicted = true;
+      } else {
+        // Period still ongoing (bleeding logged today or yesterday): expect it to run to the average length.
+        const ongoing = diffDays(p.end, today) <= 1 && diffDays(p.start, today) < avgPeriod;
+        periodLength = ongoing ? Math.max(p.length, avgPeriod) : p.length;
+      }
+    }
+
+    const cycleDay = diffDays(cycleStart, date) + 1;
+    const ovulationDay = Math.max(periodLength + 2, cycleLength - 14);
+    const bleeding = BLEEDING.has(entriesByDate.get(date)?.flow ?? "none");
+    const predictedPeriod = !bleeding && cycleDay <= periodLength && (predicted || date > today);
+    const ovulation = cycleDay === ovulationDay;
+    const fertile = cycleDay >= ovulationDay - 5 && cycleDay <= ovulationDay + 1;
+
+    let phase: Phase;
+    if (bleeding || cycleDay <= periodLength) phase = "menstrual";
+    else if (cycleDay >= ovulationDay - 1 && cycleDay <= ovulationDay + 1) phase = "ovulation";
+    else if (cycleDay < ovulationDay - 1) phase = "follicular";
+    else phase = "luteal";
+
+    const fertility: DayInfo["fertility"] = ovulation
+      ? "peak"
+      : cycleDay >= ovulationDay - 2 && cycleDay <= ovulationDay + 1
+        ? "high"
+        : fertile
+          ? "medium"
+          : "low";
+
+    return { cycleDay, cycleLength, cycleStart, phase, bleeding, predictedPeriod, fertile, ovulation, ovulationDay, predicted, fertility };
+  };
+}

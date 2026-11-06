@@ -1,43 +1,46 @@
 "use client";
-import { type ReactNode } from "react";
+// Adapted from fancy components "Stacking Cards" (author: Khoa Phan, MIT, see LICENSE.md).
+import { createContext, useContext, useRef, type HTMLAttributes, type PropsWithChildren } from "react";
+import { motion, useScroll, useTransform, type MotionValue, type UseScrollOptions } from "motion/react";
+import { cn } from "./cn";
 
-export type StackCardItem = {
-  id: string;
-  tag: string;
-  title: string;
-  description: string;
-  icon?: ReactNode;
-  accent?: string;
-};
+interface StackingCardsProps extends PropsWithChildren, HTMLAttributes<HTMLDivElement> {
+  scrollOptions?: Omit<UseScrollOptions, "target">;
+  scaleMultiplier?: number;
+  totalCards: number;
+}
 
-export function StackingCards({
-  items,
-  className = "",
-}: {
-  items: StackCardItem[];
-  className?: string;
-}) {
+interface StackingCardItemProps extends HTMLAttributes<HTMLDivElement>, PropsWithChildren {
+  index: number;
+  topPosition?: string;
+}
+
+const StackingCardsContext = createContext<{ progress: MotionValue<number>; scaleMultiplier?: number; totalCards?: number } | null>(null);
+
+export default function StackingCards({ children, className, scrollOptions, scaleMultiplier, totalCards, ...props }: StackingCardsProps) {
+  const targetRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ offset: ["start start", "end end"], ...scrollOptions, target: targetRef });
   return (
-    <div className={`space-y-6 ${className}`}>
-      {items.map((item, index) => (
-        <div
-          key={item.id}
-          className="sticky top-24 card p-6 sm:p-8 transition-transform duration-300 comic-shadow hover:-translate-y-1"
-          style={{
-            zIndex: index + 1,
-            top: `calc(6rem + ${index * 1.25}rem)`,
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-              {item.tag}
-            </span>
-            <span className="font-mono text-xs text-faint">0{index + 1}</span>
-          </div>
-          <h3 className="font-display mt-3 text-2xl sm:text-3xl text-text">{item.title}</h3>
-          <p className="mt-2 text-base text-muted leading-relaxed max-w-2xl">{item.description}</p>
-        </div>
-      ))}
+    <StackingCardsContext.Provider value={{ progress: scrollYProgress, scaleMultiplier, totalCards }}>
+      <div className={cn(className)} ref={targetRef} {...props}>
+        {children}
+      </div>
+    </StackingCardsContext.Provider>
+  );
+}
+
+export function StackingCardItem({ index, topPosition, className, children, ...props }: StackingCardItemProps) {
+  const ctx = useContext(StackingCardsContext);
+  if (!ctx) throw new Error("StackingCardItem must be used within StackingCards");
+  const { progress, scaleMultiplier, totalCards = 0 } = ctx;
+  const scaleTo = 1 - (totalCards - index) * (scaleMultiplier ?? 0.03);
+  const scale = useTransform(progress, [index * (1 / totalCards), 1], [1, scaleTo]);
+  const top = topPosition ?? `${5 + index * 3}%`;
+  return (
+    <div className={cn("sticky top-0 h-full", className)} {...props}>
+      <motion.div className="relative h-full origin-top" style={{ top, scale }}>
+        {children}
+      </motion.div>
     </div>
   );
 }

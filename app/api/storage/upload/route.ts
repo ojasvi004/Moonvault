@@ -21,8 +21,8 @@ export async function POST(req: Request) {
   if (buf.length > MAX) return json({ error: "Backup is too large" }, 413);
   if (!looksSealed(buf)) return json({ error: "Only encrypted data can be uploaded" }, 400);
   try {
-    const { root, txHash } = await zgUpload(buf);
-    return json({ root, txHash, size: buf.length });
+    const { root, txHash, anchored } = await zgUpload(buf);
+    return json({ root, txHash, anchored, size: buf.length });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg === "NOT_CONFIGURED") return json({ error: "Cloud backup is not configured on this server." }, 503);

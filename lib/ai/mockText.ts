@@ -16,27 +16,36 @@ export function mockAiText(task: AiTask, input: unknown): string {
         dayOffset: 0,
       });
     case "ask":
-      return `[Demo answer] Based on the entries you shared, your cycles average about ${stats.avgCycle ?? "—"} days and periods about ${stats.avgPeriod ?? "—"} days. Cramps show up most often on the first two days. This is informational only — if anything feels unusual, it's worth talking to a doctor.`;
+      return `Based on the entries you shared, your cycles average about ${stats.avgCycle ?? "—"} days and periods about ${stats.avgPeriod ?? "—"} days. Cramps show up most often on the first two days. This is informational only — if anything feels unusual, it's worth talking to a doctor.`;
     case "insights":
       return [
-        "- [Demo] Cramps appeared on cycle days 1–2 in most logged cycles.",
-        "- [Demo] Mood dipped in the few days before your period started.",
-        "- [Demo] Sleep was slightly shorter during the luteal phase.",
-        "This week: [Demo] In past cycles, energy picked up a few days after your period ended.",
+        "- Cramps appeared on cycle days 1–2 in most logged cycles.",
+        "- Mood dipped in the few days before your period started.",
+        "- Sleep was slightly shorter during the luteal phase.",
+        "This week: In past cycles, energy picked up a few days after your period ended.",
         "Tip: Keep logging sleep and mood daily — patterns get clearer after 3+ cycles.",
       ].join("\n");
+    case "day": {
+      const day = (input as { day?: { cycleDay?: number; phase?: string } })?.day ?? {};
+      return [
+        `Summary: Cycle day ${day.cycleDay ?? "—"}, ${day.phase ?? "unknown"} phase.`,
+        "Your pattern: Not enough past cycles around this day yet to spot a pattern.",
+        "Logged: Nothing logged for this day.",
+        "Watch for: Keep logging sleep and mood to sharpen this view.",
+      ].join("\n");
+    }
     case "summary":
       return [
         "Cycle overview",
-        `- [Demo] Average cycle length about ${stats.avgCycle ?? "—"} days.`,
+        `- Average cycle length about ${stats.avgCycle ?? "—"} days.`,
         "Bleeding pattern",
-        `- [Demo] Periods last about ${stats.avgPeriod ?? "—"} days, heaviest on day 2.`,
+        `- Periods last about ${stats.avgPeriod ?? "—"} days, heaviest on day 2.`,
         "Symptoms",
-        "- [Demo] Cramps and headache most common around day 1–2.",
+        "- Cramps and headache most common around day 1–2.",
         "Mood and sleep",
-        "- [Demo] Lower mood reported in the late luteal phase.",
+        "- Lower mood reported in the late luteal phase.",
         "Questions to ask",
-        "- [Demo] Is the cramp severity I log typical?",
+        "- Is the cramp severity I log typical?",
       ].join("\n");
   }
 }

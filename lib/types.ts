@@ -33,7 +33,7 @@ export type Entry = {
   updatedAt: number;
 };
 
-export type AiKind = "ask" | "insights" | "summary" | "voice";
+export type AiKind = "ask" | "insights" | "summary" | "voice" | "day";
 
 export type AiResult = {
   id: string;

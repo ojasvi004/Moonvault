@@ -8,7 +8,7 @@ import { routerChat, UpstreamError } from "@/lib/server/zerog";
 
 export const maxDuration = 60;
 
-const TASKS: AiTask[] = ["ask", "insights", "summary", "structure"];
+const TASKS: AiTask[] = ["ask", "insights", "summary", "structure", "day"];
 
 export async function POST(req: Request) {
   const rl = rateLimit(`ai:${clientIp(req)}`, 30, 10 * 60_000);

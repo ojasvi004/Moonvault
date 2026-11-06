@@ -8,6 +8,7 @@ import { SpeakButton } from "@/components/SpeakButton";
 import { Button, Card, Disclaimer, ErrorBox, Spinner, VerificationId, timeAgo } from "@/components/ui";
 import { insightsInput } from "@/lib/ai/inputs";
 import type { Entry } from "@/lib/types";
+import { PROFILE_RECORD_ID } from "@/lib/vault/healthProfile";
 
 export const MIN_ENTRIES_FOR_INSIGHTS = 3;
 const STALE_MS = 24 * 3600_000;
@@ -28,7 +29,7 @@ export function AiInsightsCard({ entries, className = "", showAskLink = true }: 
   const started = useRef(false);
 
   const latest = useMemo(
-    () => (history ?? []).filter((h) => h.kind === "insights").sort((a, b) => b.createdAt - a.createdAt)[0],
+    () => (history ?? []).filter((h) => h.kind === "insights" && h.id !== PROFILE_RECORD_ID).sort((a, b) => b.createdAt - a.createdAt)[0],
     [history],
   );
   const lastChange = useMemo(() => entries.reduce((m, e) => Math.max(m, e.updatedAt ?? 0), 0), [entries]);

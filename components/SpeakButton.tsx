@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MOCK_SERVICES } from "@/lib/config";
+import { MOCK_AI } from "@/lib/config";
 
 /** Strip the light markdown our AI answers use so it reads naturally. */
 function speakable(text: string): string {
@@ -62,7 +62,7 @@ export function SpeakButton({ text, className = "" }: { text: string; className?
     setErr(null);
     const t = speakable(text);
     if (!t) return;
-    if (MOCK_SERVICES) {
+    if (MOCK_AI) {
       if (!speakInBrowser(t)) setErr("Read-aloud isn't supported in this browser.");
       return;
     }

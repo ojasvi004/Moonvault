@@ -76,6 +76,11 @@ export default function SignupPage() {
     };
   }, [address, attempt]);
 
+  // Existing vault on this device: go straight to unlocking it.
+  useEffect(() => {
+    if (check.state === "local") router.replace("/unlock");
+  }, [check.state, router]);
+
   const onStrength = useCallback((s: Strength | null) => setStrength(s), []);
 
   async function handleCreatePassword(e: React.FormEvent) {
@@ -192,7 +197,7 @@ export default function SignupPage() {
   if (check.state === "checking") {
     return (
       <AuthFrame title="Create your vault">
-        <Spinner label="Fetching existing account and wallet…" />
+        <Spinner label="Fetching your wallet and any existing vault…" />
       </AuthFrame>
     );
   }
@@ -200,9 +205,7 @@ export default function SignupPage() {
   if (check.state === "local") {
     return (
       <AuthFrame title="Welcome back" sub="Your vault is already set up on this device.">
-        <Button onClick={() => router.replace("/unlock")} className="w-full">
-          Unlock my vault
-        </Button>
+        <Spinner label="Opening your existing vault…" />
       </AuthFrame>
     );
   }
@@ -337,7 +340,7 @@ export default function SignupPage() {
   return (
     <AuthFrame
       title="Create your password"
-      sub="Choose a strong password to encrypt your vault. It never leaves your device and cannot be reset."
+      sub="Your wallet is ready. Now create a password: it encrypts your vault on this device, is never sent anywhere, and cannot be reset."
     >
       {check.state === "error" && (
         <div className="mb-4">

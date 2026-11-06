@@ -1,12 +1,12 @@
 // Make sure the account can pay for its record writes on the test network.
 // thirdweb gas sponsorship cannot be used with Arkiv's native operations,
 // so our /api/fund relay tops up small amounts of free testnet tokens.
-import { MOCK_SERVICES } from "@/lib/config";
+import { MOCK_AUTH, MOCK_RECORDS } from "@/lib/config";
 
 let inflight: Promise<void> | null = null;
 
 export function ensureGas(address: string): Promise<void> {
-  if (MOCK_SERVICES) return Promise.resolve();
+  if (MOCK_RECORDS || MOCK_AUTH) return Promise.resolve();
   if (!inflight) {
     inflight = (async () => {
       try {

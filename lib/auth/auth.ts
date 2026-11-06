@@ -110,7 +110,7 @@ export async function sendCode(email: string): Promise<void> {
 
 export async function verifyCode(email: string, code: string): Promise<void> {
   if (isMockAuth()) {
-    if (code.trim() !== MOCK_CODE) throw new Error("That code is not right. In demo mode the code is 123456.");
+    if (code.trim() !== MOCK_CODE) throw new Error("That code is not right.");
     localStorage.setItem(MOCK_KEY, email.toLowerCase());
     mockAccount = await mockAccountFor(email);
     set({ status: "signedIn", address: mockAccount.address, email: email.toLowerCase(), mock: true });

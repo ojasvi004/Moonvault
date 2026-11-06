@@ -1,133 +1,138 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { AiInsightsCard } from "@/components/AiInsightsCard";
+import { DayAnalysis } from "@/components/DayAnalysis";
 import { useEntries } from "@/components/hooks";
-import { Card, Disclaimer, LinkButton, PageTitle, Spinner } from "@/components/ui";
-import { computeStats, cycleDays, dayKind, phaseFor, predict, type Phase } from "@/lib/cycle/cycle";
-import { diffDays, formatDate, monthGrid, todayISO } from "@/lib/cycle/dates";
+import { Card, Disclaimer, LinkButton, Spinner } from "@/components/ui";
+import { computeStats, cycleTimeline, predict, type DayInfo, type Phase } from "@/lib/cycle/cycle";
+import { addDays, diffDays, formatDate, monthGrid, todayISO } from "@/lib/cycle/dates";
 import { getHealthProfile, type HealthProfile } from "@/lib/vault/healthProfile";
 import type { Entry } from "@/lib/types";
 
-const PHASE_COPY: Record<Phase, string> = {
-  menstrual: "Menstrual phase",
-  follicular: "Follicular phase",
-  ovulation: "Ovulation window",
-  luteal: "Luteal phase",
+const PHASE: Record<Phase, { label: string; short: string; chip: string; bar: string; cell: string }> = {
+  menstrual: { label: "Menstrual phase", short: "Period", chip: "bg-rose/10 text-rose border-rose/30", bar: "bg-rose", cell: "" },
+  follicular: { label: "Follicular phase", short: "Follicular", chip: "bg-accent/10 text-accent border-accent/30", bar: "bg-accent", cell: "bg-accent/10" },
+  ovulation: { label: "Ovulation window", short: "Ovulation", chip: "bg-gold/15 text-gold border-gold/40", bar: "bg-gold", cell: "bg-gold/15" },
+  luteal: { label: "Luteal phase", short: "Luteal", chip: "bg-lav/10 text-lav border-lav/30", bar: "bg-lav/40", cell: "bg-lav/5" },
 };
 
-const PHASE_COLORS: Record<Phase, { bg: string; text: string; border: string }> = {
-  menstrual: { bg: "bg-rose/15", text: "text-rose", border: "border-rose/30" },
-  follicular: { bg: "bg-accent/15", text: "text-accent", border: "border-accent/30" },
-  ovulation: { bg: "bg-gold/20", text: "text-gold", border: "border-gold/40" },
-  luteal: { bg: "bg-lav/15", text: "text-lav", border: "border-lav/30" },
-};
-
-const PHASE_INSIGHTS: Record<Phase, { summary: string; hormones: string; tips: string }> = {
+const PHASE_GUIDE: Record<Phase, { body: string; hormones: string; tip: string }> = {
   menstrual: {
-    summary: "Your uterine lining is shedding. Physical energy may naturally dip as estrogen and progesterone sit at baseline levels.",
-    hormones: "Low estrogen & low progesterone. Energy focus: restorative.",
-    tips: "Prioritize warm, iron-dense foods, magnesium, and gentle walks or stretching.",
+    body: "The uterine lining sheds. Estrogen and progesterone are at their lowest, so energy often dips.",
+    hormones: "Low estrogen, low progesterone",
+    tip: "Warm, iron-rich meals, magnesium, gentle movement and extra rest.",
   },
   follicular: {
-    summary: "Follicles are maturing in the ovaries. Rising estrogen stimulates serotonin, bringing a noticeable surge in stamina, focus, and optimism.",
-    hormones: "Estrogen steadily climbing. Energy focus: high endurance & creativity.",
-    tips: "Ideal phase for high-intensity training, initiating new projects, and social collaboration.",
+    body: "Follicles mature and rising estrogen often lifts stamina, focus and mood.",
+    hormones: "Estrogen rising, FSH active",
+    tip: "A good window for harder workouts and starting new things.",
   },
   ovulation: {
-    summary: "A surge in luteinizing hormone (LH) triggers the release of an egg. Estrogen and testosterone reach their monthly zenith.",
-    hormones: "Peak estrogen & testosterone spike. Energy focus: peak communication & confidence.",
-    tips: "Your fertile window is at its highest. Basal body temperature slightly elevates. Stay hydrated.",
+    body: "An LH surge releases an egg. Estrogen peaks and basal body temperature rises slightly afterwards.",
+    hormones: "LH surge, estrogen peak",
+    tip: "Most fertile days. Stay hydrated; some people notice mild one-sided twinges.",
   },
   luteal: {
-    summary: "Progesterone becomes the dominant hormone, preparing the body. Metabolism increases while sensory sensitivity and internal focus heighten.",
-    hormones: "High progesterone, tapering estrogen. Energy focus: calming, organizing & grounding.",
-    tips: "Support mood with complex carbs, limit excess caffeine, and schedule restful evenings.",
+    body: "Progesterone dominates. Late in this phase, hormones fall and PMS symptoms can appear.",
+    hormones: "Progesterone high, then both fall",
+    tip: "Steady meals, less caffeine, and protecting sleep can ease the last few days.",
   },
 };
+
+const FERTILITY_LEVEL = { low: 1, medium: 2, high: 3, peak: 4 } as const;
+const MOOD_EMOJI: Record<string, string> = { great: "😄", good: "🙂", okay: "😐", low: "😔", bad: "😣" };
 
 export default function CalendarPage() {
   const { entries } = useEntries();
   const today = todayISO();
   const [cursor, setCursor] = useState(() => ({ y: +today.slice(0, 4), m: +today.slice(5, 7) - 1 }));
-  const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [healthProfile, setHealthProfile] = useState<HealthProfile | null>(null);
+  const [selected, setSelected] = useState<string>(today);
+  const [profile, setProfile] = useState<HealthProfile | null>(null);
 
   useEffect(() => {
-    void getHealthProfile().then(setHealthProfile);
+    void getHealthProfile().then(setProfile);
   }, []);
 
   const model = useMemo(() => {
     if (!entries) return null;
-    const stats = computeStats(entries);
-    // If user provided profile defaults, blend them if stats has low confidence
-    const effectiveAvgCycle = stats.cyclesTracked > 1 ? stats.avgCycle : (healthProfile?.avgCycleLength ?? stats.avgCycle);
-    const effectiveAvgPeriod = stats.cyclesTracked > 1 ? stats.avgPeriod : (healthProfile?.avgPeriodLength ?? stats.avgPeriod);
-
-    const preds = predict({ ...stats, avgCycle: effectiveAvgCycle, avgPeriod: effectiveAvgPeriod }, today, 4);
+    const raw = computeStats(entries);
+    // Until two cycles are logged, the onboarding answers are a better guess than the defaults.
+    const avgCycle = raw.cyclesTracked >= 1 ? raw.avgCycle : (profile?.avgCycleLength ?? raw.avgCycle);
+    const avgPeriod = raw.periods.length >= 2 ? raw.avgPeriod : (profile?.avgPeriodLength ?? raw.avgPeriod);
+    const stats = { ...raw, avgCycle, avgPeriod };
     const byDate = new Map<string, Entry>(entries.map((e) => [e.date, e]));
-    const cdMap = cycleDays(entries, stats.periods);
+    const at = cycleTimeline(stats, byDate, today);
+    const preds = predict(stats, today, 3);
+    return { stats, byDate, at, preds, overrides: { avgCycle, avgPeriod } };
+  }, [entries, today, profile]);
 
-    return {
-      stats: { ...stats, avgCycle: effectiveAvgCycle, avgPeriod: effectiveAvgPeriod },
-      preds,
-      byDate,
-      cdMap,
-    };
-  }, [entries, today, healthProfile]);
+  if (!model || !entries) return <Spinner label="Decrypting your calendar…" />;
+  const { stats, byDate, at, preds, overrides } = model;
 
-  if (!model) return <Spinner label="Decrypting your calendar…" />;
-  const { stats, preds, byDate, cdMap } = model;
-
+  const todayInfo = at(today);
   const next = preds.find((p) => p.nextStart >= today) ?? preds[0];
   const daysToNext = next ? diffDays(today, next.nextStart) : null;
   const grid = monthGrid(cursor.y, cursor.m);
   const monthLabel = new Date(Date.UTC(cursor.y, cursor.m, 1)).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: "UTC" });
+  const selInfo = at(selected);
+  const selEntry = byDate.get(selected);
 
-  // Selected date info
-  const selectedEntry = byDate.get(selectedDate);
-
-  // Compute cycle day for selected date
-  let selectedCycleDay = cdMap.get(selectedDate);
-  if (!selectedCycleDay && stats.periods.length > 0) {
-    const lastStart = stats.periods[stats.periods.length - 1].start;
-    const diff = diffDays(lastStart, selectedDate);
-    if (diff >= 0) {
-      selectedCycleDay = (diff % stats.avgCycle) + 1;
-    }
-  }
-
-  const selectedPhase: Phase = selectedCycleDay
-    ? phaseFor(selectedCycleDay, stats.avgCycle, stats.avgPeriod)
-    : "follicular";
-
-  const phaseInsight = PHASE_INSIGHTS[selectedPhase];
+  const goTo = (iso: string) => {
+    setSelected(iso);
+    setCursor({ y: +iso.slice(0, 4), m: +iso.slice(5, 7) - 1 });
+  };
 
   return (
     <div className="space-y-6">
-      <PageTitle
-        eyebrow={formatDate(today, { weekday: "long", day: "numeric", month: "long" })}
-        title={selectedCycleDay ? `Cycle Day ${selectedCycleDay} · ${PHASE_COPY[selectedPhase]}` : "Your Private Cycle Calendar"}
-        sub={
-          selectedCycleDay
-            ? `${phaseInsight.summary}`
-            : "Select any day to inspect biological phases, symptoms, and private AI health analysis."
-        }
-      />
+      {/* Header / today summary */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">{formatDate(today, { weekday: "long", day: "numeric", month: "long" })}</p>
+          <h1 className="font-display mt-1 text-3xl sm:text-4xl">
+            {todayInfo ? (
+              <>
+                Cycle day {todayInfo.cycleDay} <span className="text-muted">· {PHASE[todayInfo.phase].label}</span>
+              </>
+            ) : (
+              "Your cycle calendar"
+            )}
+          </h1>
+          <p className="mt-1 text-muted">
+            {next && daysToNext !== null
+              ? daysToNext > 0
+                ? `Next period in ${daysToNext} day${daysToNext === 1 ? "" : "s"} · ${formatDate(next.nextStart, { weekday: "short", day: "numeric", month: "short" })}`
+                : daysToNext === 0
+                  ? "Your period is expected today."
+                  : `Your period is ${-daysToNext} day${daysToNext === -1 ? "" : "s"} later than expected.`
+              : "Log your period to see your phases, fertile window and predictions."}
+          </p>
+        </div>
+        <LinkButton href={`/log?date=${today}`} className="comic-sm comic-hover self-start sm:self-auto">
+          + Log today
+        </LinkButton>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        {/* Calendar Grid Card */}
-        <Card className="comic-shadow">
-          <div className="mb-4 flex items-center justify-between">
+      {todayInfo && <CycleStrip info={todayInfo} at={at} onPick={(iso) => goTo(iso)} />}
+
+      <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+        {/* Month grid */}
+        <Card className="comic !rounded-3xl">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <button
-              className="rounded-full border border-line bg-card px-3.5 py-1.5 text-sm font-semibold hover:bg-card-2"
+              className="comic-sm rounded-full bg-card px-3.5 py-1.5 text-sm font-semibold hover:bg-card-2"
               onClick={() => setCursor((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }))}
               aria-label="Previous month"
             >
               ‹
             </button>
-            <h2 className="font-display text-2xl text-text">{monthLabel}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-xl sm:text-2xl">{monthLabel}</h2>
+              <button className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted hover:text-text" onClick={() => goTo(today)}>
+                Today
+              </button>
+            </div>
             <button
-              className="rounded-full border border-line bg-card px-3.5 py-1.5 text-sm font-semibold hover:bg-card-2"
+              className="comic-sm rounded-full bg-card px-3.5 py-1.5 text-sm font-semibold hover:bg-card-2"
               onClick={() => setCursor((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 }))}
               aria-label="Next month"
             >
@@ -135,7 +140,7 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-faint">
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wider text-faint">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
               <div key={d} className="py-1">
                 {d}
@@ -143,209 +148,350 @@ export default function CalendarPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
-            {grid.map((d) => {
-              const inMonth = +d.slice(5, 7) - 1 === cursor.m;
-              const kind = dayKind(d, byDate, preds);
-              const e = byDate.get(d);
-              const isToday = d === today;
-              const isSelected = d === selectedDate;
-
-              // Calculate rough phase for background highlight if cycle data exists
-              let cDay = cdMap.get(d);
-              if (!cDay && stats.periods.length > 0) {
-                const diff = diffDays(stats.periods[stats.periods.length - 1].start, d);
-                if (diff >= 0) cDay = (diff % stats.avgCycle) + 1;
-              }
-              const dPhase = cDay ? phaseFor(cDay, stats.avgCycle, stats.avgPeriod) : null;
-
-              let style = "text-text hover:bg-card-2";
-              if (kind === "period") {
-                style = "bg-rose text-white font-bold shadow-sm";
-              } else if (kind === "predicted") {
-                style = "border-2 border-dashed border-rose text-rose font-semibold";
-              } else if (kind === "ovulation") {
-                style = "bg-gold text-white font-bold ring-2 ring-gold/40 shadow-sm";
-              } else if (kind === "fertile") {
-                style = "bg-lav-soft text-lav font-semibold border border-lav/40";
-              } else if (dPhase === "luteal") {
-                style = "bg-lav/5 text-muted";
-              } else if (dPhase === "follicular") {
-                style = "bg-accent/5 text-muted";
-              }
-
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setSelectedDate(d)}
-                  className={`relative flex aspect-square flex-col items-center justify-center rounded-xl p-1 text-sm transition ${style} ${
-                    inMonth ? "" : "opacity-30"
-                  } ${isSelected ? "ring-2 ring-text ring-offset-2" : isToday ? "ring-2 ring-accent ring-offset-1" : ""}`}
-                  aria-label={`Select date ${d}`}
-                >
-                  <span>{+d.slice(8)}</span>
-                  {e && (e.symptoms.length > 0 || e.mood) && kind !== "period" && (
-                    <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-accent" />
-                  )}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            {grid.map((d) => (
+              <DayCell
+                key={d}
+                date={d}
+                info={at(d)}
+                entry={byDate.get(d)}
+                inMonth={+d.slice(5, 7) - 1 === cursor.m}
+                isToday={d === today}
+                isSelected={d === selected}
+                onClick={() => setSelected(d)}
+              />
+            ))}
           </div>
 
-          {/* Phase Legend */}
-          <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-xs font-medium text-muted">
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-rose" /> Period
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full border-2 border-dashed border-rose" /> Predicted
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-lav/20 border border-lav/50" /> Fertile window
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-gold" /> Ovulation
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-accent/15" /> Follicular
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-lav/10" /> Luteal
-            </span>
-          </div>
+          <Legend />
         </Card>
 
-        {/* Selected Day Inspector & AI Insights */}
-        <div className="space-y-5">
-          <Card className="comic-shadow border-2 border-line">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Selected Day</p>
-                <h3 className="font-display mt-0.5 text-2xl text-text">
-                  {formatDate(selectedDate, { weekday: "short", month: "short", day: "numeric" })}
-                </h3>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${PHASE_COLORS[selectedPhase].bg} ${PHASE_COLORS[selectedPhase].text}`}
-              >
-                {selectedCycleDay ? `Day ${selectedCycleDay} · ${PHASE_COPY[selectedPhase]}` : "Phase Estimate"}
-              </span>
-            </div>
-
-            {/* AI Physiological Insight */}
-            <div className="mt-4 rounded-xl border border-line bg-card-2 p-3.5 text-sm space-y-2">
-              <div className="flex items-center gap-1.5 font-semibold text-text">
-                <span className="text-accent">✦</span> Private AI Biological Analysis
-              </div>
-              <p className="text-muted leading-relaxed">{phaseInsight.summary}</p>
-              <div className="border-t border-line/60 pt-2 text-xs text-faint">
-                <strong>Hormonal Profile:</strong> {phaseInsight.hormones}
-              </div>
-              <div className="text-xs text-muted">
-                <strong>Recommendation:</strong> {phaseInsight.tips}
-              </div>
-              {healthProfile?.conditions && healthProfile.conditions.length > 0 && !healthProfile.conditions.includes("None / Regular") && (
-                <div className="mt-2 rounded-lg bg-accent/10 p-2 text-xs text-accent">
-                  <strong>Personalized note for {healthProfile.conditions.join(", ")}:</strong> Keep a close eye on cycle variability and symptom triggers during this phase.
-                </div>
-              )}
-            </div>
-
-            {/* Logged Data for Selected Date */}
-            <div className="mt-4 border-t border-line pt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-text">Logged Details</span>
-                <LinkButton href={`/log?date=${selectedDate}`} variant="ghost" className="text-xs px-3 py-1 min-h-8">
-                  {selectedEntry ? "Edit entry" : "Log this day"}
-                </LinkButton>
-              </div>
-
-              {selectedEntry ? (
-                <div className="mt-2 space-y-1.5 text-xs text-muted">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-text">Flow:</span>
-                    <span className="capitalize">{selectedEntry.flow}</span>
-                  </div>
-                  {selectedEntry.symptoms.length > 0 && (
-                    <div>
-                      <span className="font-medium text-text">Symptoms: </span>
-                      {selectedEntry.symptoms.join(", ")}
-                    </div>
-                  )}
-                  {selectedEntry.mood && (
-                    <div>
-                      <span className="font-medium text-text">Mood: </span>
-                      <span className="capitalize">{selectedEntry.mood}</span>
-                    </div>
-                  )}
-                  {selectedEntry.sleepHours != null && (
-                    <div>
-                      <span className="font-medium text-text">Sleep: </span>
-                      {selectedEntry.sleepHours} hours
-                    </div>
-                  )}
-                  {selectedEntry.notes && (
-                    <div className="italic text-faint">&ldquo;{selectedEntry.notes}&rdquo;</div>
-                  )}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-faint">
-                  No symptoms or bleeding recorded for this day yet.
-                </p>
-              )}
-            </div>
-          </Card>
-
-          {/* Next Period Summary */}
-          <Card className="comic-shadow">
-            <p className="text-sm text-muted">Next Cycle Forecast</p>
-            {next ? (
-              <>
-                <p className="font-display mt-1 text-3xl text-text">
-                  {daysToNext! > 0 ? `In ${daysToNext} days` : daysToNext === 0 ? "Expected today" : `${-daysToNext!} days late`}
-                </p>
-                <p className="mt-1 text-sm text-muted">
-                  Predicted start: {formatDate(next.nextStart, { weekday: "short", day: "numeric", month: "short" })}
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-xl border border-lav/30 bg-lav/10 p-3">
-                    <p className="font-semibold text-lav">Fertile Window</p>
-                    <p className="mt-0.5 text-text">
-                      {formatDate(next.fertileStart)} – {formatDate(next.fertileEnd)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-gold/40 bg-gold/15 p-3">
-                    <p className="font-semibold text-gold">Ovulation (est.)</p>
-                    <p className="mt-0.5 text-text">{formatDate(next.ovulation)}</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <p className="font-display mt-1 text-xl text-text">Log a period to begin predictions</p>
-            )}
-            <p className="mt-3 text-xs text-faint">
-              <span
-                className={`mr-1 rounded-full px-2 py-0.5 ${
-                  stats.confidence === "high"
-                    ? "bg-ok/15 text-ok"
-                    : stats.confidence === "medium"
-                    ? "bg-warn/15 text-warn"
-                    : "bg-card-2 text-muted"
-                }`}
-              >
-                {stats.confidence} confidence
-              </span>
-              {stats.confidenceNote}
-            </p>
-            <div className="mt-2">
-              <Disclaimer />
-            </div>
-          </Card>
+        {/* Selected day */}
+        <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <DayPanel date={selected} info={selInfo} entry={selEntry} today={today} />
+          <DayAnalysis entries={entries} date={selected} info={selInfo} overrides={overrides} />
         </div>
       </div>
 
-      <AiInsightsCard entries={entries!} className="mt-6" />
+      {/* Forecast */}
+      <Card className="comic-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Forecast</p>
+            <h2 className="font-display mt-1 text-2xl">Your next cycles</h2>
+          </div>
+          <span
+            className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+              stats.confidence === "high" ? "border-ok/30 bg-ok/10 text-ok" : stats.confidence === "medium" ? "border-warn/30 bg-warn/10 text-warn" : "border-line bg-card-2 text-muted"
+            }`}
+          >
+            {stats.confidence} confidence
+          </span>
+        </div>
+        {preds.length ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {preds.map((p, i) => (
+              <button key={p.nextStart} onClick={() => goTo(p.nextStart)} className="comic-sm comic-hover rounded-2xl bg-card p-4 text-left">
+                <p className="text-xs font-semibold text-faint">{i === 0 ? "Next" : `In ${i + 1} cycles`}</p>
+                <p className="font-display mt-1 text-xl text-rose">
+                  {formatDate(p.nextStart, { day: "numeric", month: "short" })} – {formatDate(p.nextEnd, { day: "numeric", month: "short" })}
+                </p>
+                <p className="mt-2 text-xs text-muted">
+                  <span className="font-semibold text-lav">Fertile</span> {formatDate(p.fertileStart)} – {formatDate(p.fertileEnd)}
+                </p>
+                <p className="text-xs text-muted">
+                  <span className="font-semibold text-gold">Ovulation</span> ~{formatDate(p.ovulation, { weekday: "short", day: "numeric", month: "short" })}
+                </p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-muted">Log a period (or add your last period date in Profile) to start predictions.</p>
+        )}
+        <div className="mt-4 grid gap-2 text-xs text-muted sm:grid-cols-4">
+          <Stat label="Avg cycle" value={`${stats.avgCycle} days`} />
+          <Stat label="Avg period" value={`${stats.avgPeriod} days`} />
+          <Stat label="Cycles tracked" value={String(stats.cyclesTracked)} />
+          <Stat label="Variability" value={stats.cyclesTracked > 1 ? `±${stats.variability} days` : "—"} />
+        </div>
+        <p className="mt-3 text-xs text-faint">{stats.confidenceNote}</p>
+        <div className="mt-2">
+          <Disclaimer />
+        </div>
+      </Card>
+
+      <AiInsightsCard entries={entries} />
     </div>
+  );
+}
+
+/* --------------------------------------------------------------------------- */
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-line bg-card-2/60 px-3 py-2">
+      <p className="text-faint">{label}</p>
+      <p className="font-semibold text-text">{value}</p>
+    </div>
+  );
+}
+
+function CycleStrip({ info, at, onPick }: { info: DayInfo; at: (iso: string) => DayInfo | null; onPick: (iso: string) => void }) {
+  const days = Array.from({ length: info.cycleLength }, (_, i) => i + 1);
+  const ov = info.ovulationDay;
+  const phaseOf = (cd: number): Phase => at(addDays(info.cycleStart, cd - 1))?.phase ?? "follicular";
+  return (
+    <div className="comic-sm rounded-2xl bg-card p-4">
+      <div className="mb-2 flex items-center justify-between text-xs text-muted">
+        <span className="font-semibold text-text">This cycle</span>
+        <span>
+          Day {info.cycleDay} of ~{info.cycleLength} · ovulation ~day {ov}
+        </span>
+      </div>
+      <div className="flex gap-[3px]" role="list" aria-label="Days of the current cycle">
+        {days.map((cd) => {
+          const p = phaseOf(cd);
+          const isToday = cd === info.cycleDay;
+          const fertile = cd >= ov - 5 && cd <= ov + 1;
+          return (
+            <button
+              key={cd}
+              role="listitem"
+              onClick={() => onPick(addDays(info.cycleStart, cd - 1))}
+              title={`Cycle day ${cd} · ${PHASE[p].short}${fertile ? " · fertile" : ""}`}
+              className={`relative h-7 flex-1 rounded-[4px] transition hover:opacity-80 ${PHASE[p].bar} ${isToday ? "outline-2 outline-offset-2 outline-ink" : ""} ${cd > info.cycleDay ? "opacity-45" : ""}`}
+            >
+              {cd === ov && <span className="absolute inset-0 grid place-items-center text-[10px] text-white">★</span>}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-2 flex justify-between text-[10px] text-faint">
+        <span>Day 1</span>
+        <span>Day {info.cycleLength}</span>
+      </div>
+    </div>
+  );
+}
+
+function DayCell({
+  date,
+  info,
+  entry,
+  inMonth,
+  isToday,
+  isSelected,
+  onClick,
+}: {
+  date: string;
+  info: DayInfo | null;
+  entry?: Entry;
+  inMonth: boolean;
+  isToday: boolean;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  let cls = "bg-card-2/40 text-text";
+  let mark: React.ReactNode = null;
+  if (info?.bleeding) {
+    cls = entry?.flow === "heavy" ? "bg-rose text-white font-bold" : entry?.flow === "light" ? "bg-rose/70 text-white font-semibold" : "bg-rose/85 text-white font-bold";
+  } else if (entry?.flow === "spotting") {
+    cls = "bg-rose/10 text-rose font-semibold";
+  } else if (info?.predictedPeriod) {
+    cls = "hatch-rose border border-dashed border-rose/70 text-rose font-semibold";
+  } else if (info?.ovulation) {
+    cls = "bg-gold text-accent-ink font-bold";
+    mark = <span className="absolute left-1 top-0.5 text-[9px]">★</span>;
+  } else if (info?.fertile) {
+    cls = "bg-lav-soft text-lav font-semibold";
+  } else if (info) {
+    cls = `${PHASE[info.phase].cell} text-text`;
+  }
+
+  const dots: string[] = [];
+  if (entry?.symptoms.length || entry?.symptomsText) dots.push("bg-accent");
+  if (entry?.mood) dots.push("bg-lav");
+  if (entry?.sleepHours != null) dots.push("bg-ok");
+  if (entry?.notes) dots.push("bg-muted");
+  const onDark = !!info?.bleeding;
+
+  const label = [
+    formatDate(date, { weekday: "long", day: "numeric", month: "long" }),
+    info ? `cycle day ${info.cycleDay}` : null,
+    info?.bleeding ? "period" : info?.predictedPeriod ? "predicted period" : info?.ovulation ? "estimated ovulation" : info?.fertile ? "fertile window" : info ? PHASE[info.phase].short : null,
+    entry ? "has log" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={isSelected}
+      className={`relative flex aspect-square flex-col items-center justify-center rounded-xl text-sm transition ${cls} ${inMonth ? "" : "opacity-35"} ${
+        isSelected ? "z-10 scale-[1.04] outline-2 outline-offset-2 outline-ink shadow-[3px_3px_0_0_var(--shadow)]" : "hover:brightness-[0.97]"
+      }`}
+    >
+      {mark}
+      {info && <span className={`absolute right-1 top-0.5 hidden text-[9px] sm:block ${onDark ? "text-white/80" : "text-faint"}`}>{info.cycleDay}</span>}
+      <span className={isToday ? `grid h-7 w-7 place-items-center rounded-full ${onDark ? "bg-card text-rose" : "bg-ink text-white"}` : ""}>{+date.slice(8)}</span>
+      {dots.length > 0 && (
+        <span className="absolute bottom-1 flex gap-0.5">
+          {dots.map((c) => (
+            <span key={c} className={`h-1 w-1 rounded-full ${onDark ? "bg-card" : c}`} />
+          ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function Legend() {
+  const items: [string, string][] = [
+    ["bg-rose", "Period"],
+    ["hatch-rose border border-dashed border-rose/70", "Predicted period"],
+    ["bg-accent/10 border border-accent/30", "Follicular"],
+    ["bg-lav-soft border border-lav/40", "Fertile window"],
+    ["bg-gold", "Ovulation"],
+    ["bg-lav/5 border border-lav/20", "Luteal"],
+  ];
+  return (
+    <div className="mt-5 space-y-2 border-t border-line pt-4 text-xs text-muted">
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        {items.map(([c, l]) => (
+          <span key={l} className="flex items-center gap-1.5">
+            <span className={`h-3.5 w-3.5 rounded ${c}`} /> {l}
+          </span>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-faint">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" /> symptoms
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-lav" /> mood
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-ok" /> sleep
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-muted" /> note
+        </span>
+        <span>· small number = cycle day</span>
+      </div>
+    </div>
+  );
+}
+
+function DayPanel({ date, info, entry, today }: { date: string; info: DayInfo | null; entry?: Entry; today: string }) {
+  const future = date > today;
+  const guide = info ? PHASE_GUIDE[info.phase] : null;
+  return (
+    <Card className="comic !rounded-3xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-faint">{date === today ? "Today" : future ? "Upcoming day" : "Past day"}</p>
+          <h3 className="font-display text-2xl">{formatDate(date, { weekday: "long", day: "numeric", month: "long" })}</h3>
+        </div>
+        {info && <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${PHASE[info.phase].chip}`}>{PHASE[info.phase].short}</span>}
+      </div>
+
+      {info ? (
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl border border-line bg-card-2/50 p-2">
+            <p className="text-[10px] uppercase tracking-wider text-faint">Cycle day</p>
+            <p className="font-display text-2xl">
+              {info.cycleDay}
+              <span className="text-sm text-faint">/{info.cycleLength}</span>
+            </p>
+          </div>
+          <div className="rounded-xl border border-line bg-card-2/50 p-2">
+            <p className="text-[10px] uppercase tracking-wider text-faint">Fertility</p>
+            <div className="mt-1.5 flex justify-center gap-0.5" aria-label={`Fertility ${info.fertility}`}>
+              {[1, 2, 3, 4].map((n) => (
+                <span key={n} className={`h-4 w-2 rounded-sm ${n <= FERTILITY_LEVEL[info.fertility] ? (info.fertility === "peak" ? "bg-gold" : "bg-lav") : "bg-line"}`} />
+              ))}
+            </div>
+            <p className="mt-1 text-xs font-semibold capitalize">{info.fertility}</p>
+          </div>
+          <div className="rounded-xl border border-line bg-card-2/50 p-2">
+            <p className="text-[10px] uppercase tracking-wider text-faint">Status</p>
+            <p className="mt-1 text-sm font-semibold">{info.bleeding ? "Period logged" : info.predictedPeriod ? "Period expected" : info.ovulation ? "Ovulation (est.)" : info.fertile ? "Fertile" : info.predicted || future ? "Predicted" : "—"}</p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl bg-card-2/60 p-3 text-sm text-muted">This day is before your first logged period, so we can&apos;t place it in a cycle.</p>
+      )}
+
+      <div className="mt-4 border-t border-line pt-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">Logged</span>
+          {!future && (
+            <LinkButton href={`/log?date=${date}`} variant="ghost" className="min-h-8 px-3 py-1 text-xs">
+              {entry ? "Edit entry" : "Log this day"}
+            </LinkButton>
+          )}
+        </div>
+        {entry ? (
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-faint">Flow</dt>
+            <dd className="capitalize">{entry.flow === "none" ? "No bleeding" : entry.flow}</dd>
+            {(entry.symptoms.length > 0 || entry.symptomsText) && (
+              <>
+                <dt className="text-faint">Symptoms</dt>
+                <dd className="flex flex-wrap gap-1">
+                  {entry.symptoms.map((s) => (
+                    <span key={s} className="rounded-full bg-accent/10 px-2 py-0.5 text-xs capitalize text-accent">
+                      {s}
+                    </span>
+                  ))}
+                  {entry.symptomsText && <span className="text-xs text-muted">{entry.symptomsText}</span>}
+                </dd>
+              </>
+            )}
+            {entry.mood && (
+              <>
+                <dt className="text-faint">Mood</dt>
+                <dd className="capitalize">
+                  {MOOD_EMOJI[entry.mood]} {entry.mood}
+                </dd>
+              </>
+            )}
+            {entry.sleepHours != null && (
+              <>
+                <dt className="text-faint">Sleep</dt>
+                <dd>{entry.sleepHours} h</dd>
+              </>
+            )}
+            {entry.notes && (
+              <>
+                <dt className="text-faint">Note</dt>
+                <dd className="italic text-muted">&ldquo;{entry.notes}&rdquo;</dd>
+              </>
+            )}
+          </dl>
+        ) : (
+          <p className="mt-2 text-sm text-faint">{future ? "This day hasn't happened yet." : "Nothing logged for this day."}</p>
+        )}
+      </div>
+
+      {guide && info && (
+        <details className="group mt-4 rounded-2xl border border-line bg-card-2/40 p-3 text-sm">
+          <summary className="flex cursor-pointer list-none items-center justify-between font-semibold">
+            About the {PHASE[info.phase].label.toLowerCase()}
+            <span className="text-faint transition group-open:rotate-180">⌄</span>
+          </summary>
+          <p className="mt-2 text-muted">{guide.body}</p>
+          <p className="mt-2 text-xs text-faint">
+            <strong className="text-muted">Hormones:</strong> {guide.hormones}
+          </p>
+          <p className="mt-1 text-xs text-faint">
+            <strong className="text-muted">Try:</strong> {guide.tip}
+          </p>
+        </details>
+      )}
+    </Card>
   );
 }

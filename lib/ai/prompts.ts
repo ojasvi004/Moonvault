@@ -61,6 +61,18 @@ export function buildMessages(task: AiTask, input: Record<string, unknown>): { m
           { role: "user", content: `Stats: ${JSON.stringify(input.stats)}\nToday: ${JSON.stringify(input.today ?? null)}\nEntries with cycle day: ${JSON.stringify(input.data)}` },
         ],
       };
+    case "day":
+      return {
+        json: false,
+        maxTokens: 450,
+        messages: [
+          {
+            role: "system",
+            content: `${SAFETY} You analyse ONE selected day of the user's cycle. The app has already computed the cycle day, phase and fertility estimate; interpret them, do not recompute. Use the user's own history for the same cycle days in past cycles ("sameDayHistory") and the days around the selected day ("nearby"). Output exactly these lines, each starting with the label: "Summary:" one or two sentences about where this day sits in the cycle and what the body is typically doing. "Your pattern:" what the user's own past cycles show around this cycle day (symptoms, mood, sleep, flow), with counts like "in 2 of 3 cycles"; if there is not enough history, say so plainly. "Logged:" one sentence about what was logged on this day, or "Nothing logged for this day." "Watch for:" one short, practical, non-medical tip for this day. Keep the whole answer under 110 words.`,
+          },
+          { role: "user", content: `Selected day: ${JSON.stringify(input.day)}\nStats: ${JSON.stringify(input.stats)}\nNearby days: ${JSON.stringify(input.nearby)}\nSame cycle day in past cycles: ${JSON.stringify(input.sameDayHistory)}` },
+        ],
+      };
     case "summary":
       return {
         json: false,
