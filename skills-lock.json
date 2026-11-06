@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "0g-compute": {
+      "source": "0gfoundation/0g-compute-skills",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "2fd51ca739b12041564cc11c9176f17abc32b08ccd483e30857c3032b5f76ee5"
+    },
+    "arkiv": {
+      "source": "arkiv-network/skills",
+      "sourceType": "github",
+      "skillPath": "skills/arkiv/SKILL.md",
+      "computedHash": "5b30b35f1d27007205f4c1360a0e6379c253e99a1a0c78fb3f62aeba85a9cb57"
+    }
+  }
+}
