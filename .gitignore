@@ -17,6 +17,8 @@
 /.next/
 /out/
 
+gcloud-service-account.json
+
 # production
 /build
 

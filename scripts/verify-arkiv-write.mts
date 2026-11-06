@@ -1,11 +1,23 @@
 // Section 9 verification: Arkiv writes through the app's real ArkivAdapter.
 // Needs RELAY_PRIVATE_KEY funded with tGLM (https://hub.arkiv.network/faucet).
 // Run: npx tsx --env-file=.env.local scripts/verify-arkiv-write.mts
+import fs from "node:fs";
 import { privateKeyToAccount } from "viem/accounts";
 import { ArkivAdapter } from "../lib/adapters/arkiv/adapter";
 import { arkivPublic } from "../lib/adapters/arkiv/client";
 
-const key = process.env.RELAY_PRIVATE_KEY as `0x${string}` | undefined;
+let key = process.env.RELAY_PRIVATE_KEY as `0x${string}` | undefined;
+if (!key) {
+  for (const envFile of [".env.local", ".env"]) {
+    if (fs.existsSync(envFile)) {
+      const match = fs.readFileSync(envFile, "utf8").match(/^RELAY_PRIVATE_KEY=(.+)$/m);
+      if (match && match[1].trim()) {
+        key = match[1].trim() as `0x${string}`;
+        break;
+      }
+    }
+  }
+}
 if (!key) throw new Error("Set RELAY_PRIVATE_KEY");
 const signer = privateKeyToAccount(key);
 const a = new ArkivAdapter();

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+
 // Section 9 verification: 0G Private Computer (chat + request ID, transcription)
 // and 0G Storage (upload/download round trip of ciphertext-shaped bytes).
 // Run: npx tsx --env-file=.env.local scripts/verify-zerog.mts [ai|storage|all]
@@ -28,11 +30,37 @@ if (which === "ai" || which === "all") {
       })(),
     });
     console.log("AI transcription endpoint status:", stt.status, (await stt.text()).slice(0, 200));
+    if (stt.status !== 200) {
+      console.log("Testing audio fallback model (qwen3.5-omni-flash)...");
+      const omni = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          model: process.env.ZG_AUDIO_CHAT_MODEL ?? "qwen3.5-omni-flash",
+          max_tokens: 30,
+          messages: [{ role: "user", content: "Reply with ok" }],
+        }),
+      });
+      const omniBody = await omni.json();
+      console.log("Audio fallback model status:", omni.status, "text:", omniBody?.choices?.[0]?.message?.content);
+    }
   }
 }
 
 if (which === "storage" || which === "all") {
-  const pk = process.env.ZG_STORAGE_PRIVATE_KEY || process.env.RELAY_PRIVATE_KEY;
+  let pk = process.env.ZG_STORAGE_PRIVATE_KEY || process.env.RELAY_PRIVATE_KEY;
+  if (!pk) {
+    for (const envFile of [".env.local", ".env"]) {
+      if (fs.existsSync(envFile)) {
+        const text = fs.readFileSync(envFile, "utf8");
+        const m = text.match(/^(?:ZG_STORAGE_PRIVATE_KEY|RELAY_PRIVATE_KEY)=(0x[a-fA-F0-9]{64})$/m);
+        if (m && m[1].trim()) {
+          pk = m[1].trim();
+          break;
+        }
+      }
+    }
+  }
   if (!pk) console.log("Storage: skip (no key)");
   else {
     const { Indexer, MemData } = await import("@0gfoundation/0g-ts-sdk");

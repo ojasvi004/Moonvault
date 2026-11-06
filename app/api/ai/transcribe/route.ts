@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     } catch (e) {
       // If the speech-to-text model is not routable, fall back to an audio-capable chat model.
       const status = (e as { upstreamStatus?: number }).upstreamStatus;
-      if (status !== 400 && status !== 404 && status !== 503) throw e;
+      if (status && status !== 400 && status !== 404 && status !== 500 && status !== 502 && status !== 503) throw e;
       const fmt = file.type.includes("mp4") ? "mp4" : file.type.includes("ogg") ? "ogg" : "webm";
       const out = await routerTranscribeViaChat(new Uint8Array(await file.arrayBuffer()), fmt, ctrl.signal);
       return json(out);
