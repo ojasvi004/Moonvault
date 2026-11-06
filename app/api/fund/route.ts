@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     const balance = await pub.getBalance({ address });
     if (balance >= parseEther(serverEnv.fundMinBalanceEth)) return json({ funded: false, balance: formatEther(balance) });
 
-    if (!serverEnv.relayKey) return json({ error: "Syncing is not configured on this server (missing relay key)." }, 503);
+    if (!serverEnv.relayKey) return json({ funded: false, relayLow: true, error: "Syncing is not configured on this server (missing relay key)." });
     const perAddr = rateLimit(`fund-addr:${address.toLowerCase()}`, 3, 24 * 60 * 60_000);
     if (!perAddr.ok) return limited(perAddr.retryAfter);
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     return json({ funded: true, txHash: hash });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    if (/insufficient funds|exceeds the balance/i.test(msg)) return json({ error: "The sync relay is out of test funds. Please tell the team." }, 503);
-    return json({ error: "Could not prepare your account for syncing. Please retry." }, 502);
+    if (/insufficient funds|exceeds the balance/i.test(msg)) return json({ funded: false, relayLow: true, error: "The sync relay is out of test funds." });
+    return json({ funded: false, error: "Could not prepare your account for syncing. Please retry." });
   }
 }

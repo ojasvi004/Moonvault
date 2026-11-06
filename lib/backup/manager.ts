@@ -69,11 +69,17 @@ export function backupNow(): Promise<void> {
       },
     );
     set({ progress: 0.88, label: "Saving pointer" });
-    await withRetry(() => publishBackupPointer(up.root, snapshotAt), { attempts: 3 });
     await patchMeta({ lastBackup: { at: snapshotAt, root: up.root, entryCount: entries.length, size: up.size } });
     await markBackedUp(snapshotAt);
     set({ state: "idle", progress: 1, label: "Backed up", error: undefined });
     await refreshBackupStatus();
+
+    // Synchronize backup pointer to profile in background
+    try {
+      await publishBackupPointer(up.root, snapshotAt);
+    } catch (pointerErr) {
+      console.warn("[Backup] Pointer sync notice:", pointerErr);
+    }
   })()
     .catch((e: unknown) => {
       const msg = errMsg(e);
@@ -114,7 +120,7 @@ export function startBackupManager() {
   subscribeRecords(() => {
     if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => {
-      void refreshBackupStatus().then(() => maybeAutoBackup());
+      void refreshBackupStatus().then(() => maybeAutoBackup(true));
     }, 1500);
   });
   subscribeSession(() => {

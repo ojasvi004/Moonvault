@@ -56,8 +56,13 @@ export function DoctorView({ shareId }: { shareId: string }) {
 
         {state.k === "gone" && (
           <div className="py-24 text-center">
-            <p className="font-display text-3xl">This link has expired</p>
-            <p className="mx-auto mt-3 max-w-md text-[#5b5568]">{state.msg} If you still need access, ask the person who shared it to send a new link.</p>
+            <p className="font-display text-3xl">
+              {state.msg.includes("expired") ? "This link has expired" : "Link unavailable"}
+            </p>
+            <p className="mx-auto mt-3 max-w-md text-[#5b5568]">
+              {state.msg}
+              {state.msg.includes("expired") ? " If you still need access, ask the person who shared it to send a new link." : ""}
+            </p>
           </div>
         )}
 

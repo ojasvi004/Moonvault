@@ -33,5 +33,12 @@ describe("share packages", () => {
     expect((await openPackage(key, sealed, "abc")).entries).toHaveLength(2);
     await expect(openPackage(key, sealed, "other")).rejects.toThrow();
     await expect(openPackage(await generateDk(), sealed, "abc")).rejects.toThrow();
+
+    // Verify hex serialization round-trip (e.g. cloud store fallback)
+    const hex = Array.from(sealed, (b) => b.toString(16).padStart(2, "0")).join("");
+    const fromHex = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < fromHex.length; i++) fromHex[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+    const restored = await openPackage(key, fromHex, "abc");
+    expect(restored.entries).toHaveLength(2);
   });
 });

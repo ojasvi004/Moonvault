@@ -9,7 +9,7 @@ export const serverEnv = {
   zgAudioChatModel: process.env.ZG_AUDIO_CHAT_MODEL ?? "qwen3.5-omni-flash",
   zgTrustMode: process.env.ZG_TRUST_MODE ?? "", // "", "verified" or "private"
 
-  arkivAccessKey: process.env.ARKIV_ACCESS_KEY ?? "",
+  arkivAccessKey: (process.env.ARKIV_ACCESS_KEY ?? "").trim().replace(/^["']|["']$/g, ""),
   relayKey: (process.env.RELAY_PRIVATE_KEY ?? "") as `0x${string}` | "",
   fundAmountEth: process.env.FUND_AMOUNT ?? "0.002",
   fundMinBalanceEth: process.env.FUND_MIN_BALANCE ?? "0.0005",
@@ -20,6 +20,7 @@ export const serverEnv = {
 };
 
 export function arkivRpcUrl(): string {
+  const key = (serverEnv.arkivAccessKey || process.env.ARKIV_ACCESS_KEY || "").trim().replace(/^["']|["']$/g, "");
   const base = "https://rpc.rabdi.db-chain.testnet.arkiv.network";
-  return serverEnv.arkivAccessKey ? `${base}/${encodeURIComponent(serverEnv.arkivAccessKey)}` : base;
+  return key ? `${base}/${encodeURIComponent(key)}` : base;
 }

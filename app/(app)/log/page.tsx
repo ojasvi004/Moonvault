@@ -36,6 +36,8 @@ export default function LogPage() {
   const [form, setForm] = useState<Form>(blank(today));
   const [voice, setVoice] = useState<VoiceResult | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
@@ -53,9 +55,51 @@ export default function LogPage() {
     queueMicrotask(() => setForm(existing ? fromEntry(existing) : blank(date)));
   }, [existing, date, touched]);
 
+  // Automatic data saving: persist changes to IndexedDB in the background as you edit
+  useEffect(() => {
+    if (!touched) return;
+    const sleep = form.sleepHours === "" ? undefined : Number(form.sleepHours);
+    if (sleep !== undefined && (!Number.isFinite(sleep) || sleep < 0 || sleep > 24)) return;
+
+    // Don't auto-save if completely blank
+    const isBlank =
+      form.flow === "none" &&
+      form.symptoms.length === 0 &&
+      !form.symptomsText.trim() &&
+      !form.mood &&
+      form.sleepHours === "" &&
+      !form.notes.trim();
+    if (isBlank && !existing) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await saveEntry({
+          id: existing?.id,
+          date: form.date,
+          flow: form.flow,
+          symptoms: form.symptoms,
+          symptomsText: form.symptomsText.trim() || undefined,
+          mood: form.mood,
+          sleepHours: sleep,
+          notes: form.notes.trim() || undefined,
+          source: form.source,
+        });
+        setSaving(false);
+        setAutoSaved(true);
+      } catch (e) {
+        setSaving(false);
+        console.warn("[Auto-save] Notice:", e);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [form, touched, existing]);
+
   const update = (patch: Partial<Form>) => {
     setTouched(true);
     setSaved(false);
+    setAutoSaved(false);
+    setSaving(true);
     setForm((f) => ({ ...f, ...patch }));
   };
 
@@ -63,6 +107,9 @@ export default function LogPage() {
     const d = addDays(today, r.log.dayOffset);
     setDate(d);
     setTouched(true);
+    setSaved(false);
+    setAutoSaved(false);
+    setSaving(true);
     setVoice(r);
     setForm({
       date: d,
@@ -95,6 +142,8 @@ export default function LogPage() {
         source: form.source,
       });
       setSaved(true);
+      setAutoSaved(true);
+      setSaving(false);
       setTouched(false);
       setVoice(null);
       setTimeout(() => router.push("/calendar"), 450);
@@ -205,7 +254,7 @@ export default function LogPage() {
           </Field>
 
           {err && <ErrorBox message={err} />}
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          <div className="flex flex-col-reverse items-center gap-3 sm:flex-row sm:justify-between">
             {existing ? (
               <Button
                 type="button"
@@ -214,6 +263,7 @@ export default function LogPage() {
                   if (!confirm("Delete this day's log?")) return;
                   await removeEntry(existing.id);
                   setTouched(false);
+                  setAutoSaved(false);
                 }}
               >
                 Delete
@@ -221,9 +271,19 @@ export default function LogPage() {
             ) : (
               <span />
             )}
-            <Button type="submit" className="sm:min-w-40">
-              {saved ? "Saved ✓" : "Save"}
-            </Button>
+            <div className="flex items-center gap-3">
+              {saving ? (
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                  Storing automatically…
+                </span>
+              ) : autoSaved ? (
+                <span className="text-xs text-ok">✓ Stored automatically</span>
+              ) : null}
+              <Button type="submit" className="sm:min-w-40">
+                {saved ? "Saved ✓" : "Save"}
+              </Button>
+            </div>
           </div>
         </form>
       </Card>

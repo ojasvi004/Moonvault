@@ -13,17 +13,43 @@ const ALLOWED = new Set([
   "eth_maxPriorityFeePerGas",
   "eth_feeHistory",
   "eth_getBlockByNumber",
+  "eth_getBlockByHash",
   "eth_getTransactionByHash",
   "eth_getTransactionReceipt",
   "eth_sendRawTransaction",
   "eth_call",
+  "eth_fillTransaction",
+  "eth_syncing",
+  "eth_getCode",
+  "eth_getStorageAt",
+  "eth_getLogs",
+  "eth_accounts",
+  "eth_requestAccounts",
+  "eth_protocolVersion",
+  "eth_getBlockTransactionCountByHash",
+  "eth_getBlockTransactionCountByNumber",
   "net_version",
+  "net_listening",
+  "net_peerCount",
+  "web3_clientVersion",
+  "web3_sha3",
 ]);
 
 type RpcCall = { jsonrpc?: string; id?: unknown; method?: string; params?: unknown };
 
 function allowed(c: RpcCall) {
   return typeof c.method === "string" && (ALLOWED.has(c.method) || c.method.startsWith("arkiv_"));
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "POST, OPTIONS",
+      "access-control-allow-headers": "content-type",
+    },
+  });
 }
 
 export async function POST(req: Request) {
@@ -40,7 +66,7 @@ export async function POST(req: Request) {
   const calls = Array.isArray(body) ? body : [body];
   if (calls.length > 20) return json({ error: "Batch too large" }, 413);
   const bad = calls.find((c) => !allowed(c));
-  if (bad) return json({ jsonrpc: "2.0", id: bad.id ?? null, error: { code: -32601, message: "Method not allowed" } }, 403);
+  if (bad) return json({ jsonrpc: "2.0", id: bad.id ?? null, error: { code: -32601, message: "Method not allowed" } });
 
   try {
     const upstream = await fetch(arkivRpcUrl(), {
@@ -49,9 +75,40 @@ export async function POST(req: Request) {
       body: raw,
       signal: AbortSignal.timeout(25_000),
     });
-    return new Response(await upstream.text(), { status: upstream.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+
+    const text = await upstream.text();
+
+    // If upstream returns 429 (e.g. ANON_COST_LIMITED), translate to JSON-RPC 2.0 error
+    // so Viem handles it cleanly as an RPC error instead of a fatal HTTP transport crash.
+    if (upstream.status === 429) {
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        /* ignore */
+      }
+      const firstId = Array.isArray(body) ? (body[0]?.id ?? null) : (body?.id ?? null);
+      const msg = typeof parsed === "object" && parsed && "message" in parsed
+        ? String((parsed as { message: unknown }).message)
+        : "Arkiv query rate limit reached";
+      return json({
+        jsonrpc: "2.0",
+        id: firstId,
+        error: { code: -32005, message: msg, data: parsed },
+      });
+    }
+
+    return new Response(text, {
+      status: upstream.status,
+      headers: {
+        "content-type": "application/json",
+        "cache-control": "no-store",
+        "access-control-allow-origin": "*",
+      },
+    });
   } catch {
     // Never echo the upstream URL: it contains the access key.
     return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "Upstream unavailable" } }, 502);
   }
 }
+

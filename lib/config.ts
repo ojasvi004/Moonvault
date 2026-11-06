@@ -12,7 +12,7 @@ export const ARKIV_PUBLIC_RPC = "https://rpc.rabdi.db-chain.testnet.arkiv.networ
 export const AUTO_LOCK_MS = Number(process.env.NEXT_PUBLIC_AUTO_LOCK_MINUTES ?? "5") * 60_000;
 
 /** Auto-backup after this many unsynced entries. */
-export const AUTO_BACKUP_THRESHOLD = 3;
+export const AUTO_BACKUP_THRESHOLD = 1;
 
 export const AI_TIMEOUT_MS = 30_000;
 

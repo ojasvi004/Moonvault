@@ -50,12 +50,16 @@ export function syncProfile(): Promise<void> {
 /** Update the backup pointer on the profile record after a successful upload. */
 export async function publishBackupPointer(root: string, at: number): Promise<void> {
   const meta = await getMeta();
-  if (!meta) throw new Error("No vault");
-  const records = await getRecords();
-  const signer = await getSigner();
-  await ensureGas(signer.address);
-  let key = meta.profileKey;
-  if (!key) key = (await records.getProfile(signer.address))?.entityKey;
-  const { entityKey } = await records.saveProfile(signer, { wrapped: meta.wrapped, backupRoot: root, backupAt: at }, key);
-  await patchMeta({ profileSynced: true, profileKey: entityKey });
+  if (!meta) return;
+  try {
+    const records = await getRecords();
+    const signer = await getSigner();
+    await ensureGas(signer.address);
+    let key = meta.profileKey;
+    if (!key) key = (await records.getProfile(signer.address))?.entityKey;
+    const { entityKey } = await records.saveProfile(signer, { wrapped: meta.wrapped, backupRoot: root, backupAt: at }, key);
+    await patchMeta({ profileSynced: true, profileKey: entityKey });
+  } catch (err) {
+    console.warn("[ProfileSync] Background backup pointer sync notice:", err);
+  }
 }
