@@ -26,13 +26,18 @@ export async function POST(req: Request) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 28_000);
   try {
+    const fmt = file.type.includes("mp4") || file.type.includes("m4a") ? "mp4" : file.type.includes("ogg") ? "ogg" : file.type.includes("wav") ? "wav" : "webm";
     try {
-      return json(await routerTranscribe(file, file.name || "voice.webm", ctrl.signal));
+      const out = await routerTranscribe(file, file.name || `voice.${fmt}`, ctrl.signal);
+      if (out.text.trim()) return json(out);
+      throw new UpstreamError("Empty transcript", 502);
     } catch (e) {
-      // If the speech-to-text model is not routable, fall back to an audio-capable chat model.
+      if (ctrl.signal.aborted) throw e;
+      // Speech-to-text failed or isn't routable: fall back to an audio-capable chat model.
+      // Only credential/balance/rate-limit errors are final (the fallback would fail the same way).
       const status = (e as { upstreamStatus?: number }).upstreamStatus;
-      if (status && status !== 400 && status !== 404 && status !== 500 && status !== 502 && status !== 503) throw e;
-      const fmt = file.type.includes("mp4") ? "mp4" : file.type.includes("ogg") ? "ogg" : "webm";
+      if (status === 401 || status === 402 || status === 403 || status === 429) throw e;
+      console.warn("[transcribe] speech-to-text failed, using audio chat fallback:", e instanceof Error ? e.message : e);
       const out = await routerTranscribeViaChat(new Uint8Array(await file.arrayBuffer()), fmt, ctrl.signal);
       return json(out);
     }

@@ -22,6 +22,7 @@ export function mockAiText(task: AiTask, input: unknown): string {
         "- [Demo] Cramps appeared on cycle days 1–2 in most logged cycles.",
         "- [Demo] Mood dipped in the few days before your period started.",
         "- [Demo] Sleep was slightly shorter during the luteal phase.",
+        "This week: [Demo] In past cycles, energy picked up a few days after your period ended.",
         "Tip: Keep logging sleep and mood daily — patterns get clearer after 3+ cycles.",
       ].join("\n");
     case "summary":

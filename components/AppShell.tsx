@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { lock } from "@/lib/vault/session";
+import { isUnlocked, lock } from "@/lib/vault/session";
+import { startPartnerSync } from "@/lib/partner/partner";
 import { startBackupManager } from "@/lib/backup/manager";
 import { syncProfile } from "@/lib/vault/profileSync";
 import { MOCK_SERVICES } from "@/lib/config";
@@ -70,6 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!unlocked || auth.status !== "signedIn") return;
     startBackupManager();
+    startPartnerSync(isUnlocked);
     void syncProfile().catch(() => undefined); // background; retried on next unlock
   }, [unlocked, auth.status]);
 

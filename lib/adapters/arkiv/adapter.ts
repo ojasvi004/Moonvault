@@ -38,13 +38,16 @@ async function syncCloudProfile(owner: string, data: ProfileWrite, entityKey?: s
   }
 }
 
-async function fetchCloudProfile(owner: string): Promise<ProfileRecord | null> {
+/** `strict`: the on-chain read already failed, so "unreachable" must not be reported as "no vault". */
+async function fetchCloudProfile(owner: string, strict = false): Promise<ProfileRecord | null> {
   if (typeof window === "undefined") return null;
   try {
     const res = await fetch(`/api/profile?owner=${encodeURIComponent(owner)}`);
+    if (!res.ok) throw new Error(`profile store ${res.status}`);
     const body = (await res.json()) as { profile?: ProfileRecord | null };
     return body.profile ?? null;
-  } catch {
+  } catch (e) {
+    if (strict) throw new Error("We couldn't reach your account record. Check your connection and try again.", { cause: e });
     return null;
   }
 }
@@ -196,6 +199,7 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
       }
     } catch (err) {
       console.warn("[Arkiv] On-chain profile read issue, trying cloud profile store:", err);
+      return fetchCloudProfile(owner, true);
     }
     return fetchCloudProfile(owner);
   }

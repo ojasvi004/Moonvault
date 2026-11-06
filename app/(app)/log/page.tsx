@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useEntries } from "@/components/hooks";
 import { Button, Card, Disclaimer, ErrorBox, Field, Notice, PageTitle, VerificationId, errMsg } from "@/components/ui";
 import { VoiceRecorder, type VoiceResult } from "@/components/VoiceRecorder";
@@ -56,6 +56,7 @@ export default function LogPage() {
   }, [existing, date, touched]);
 
   // Automatic data saving: persist changes to IndexedDB in the background as you edit
+  const lastSaved = useRef<string | null>(null);
   useEffect(() => {
     if (!touched) return;
     const sleep = form.sleepHours === "" ? undefined : Number(form.sleepHours);
@@ -71,8 +72,15 @@ export default function LogPage() {
       !form.notes.trim();
     if (isBlank && !existing) return;
 
+    // Saving re-reads the entries, which gives `existing` a new identity and re-runs
+    // this effect. Skip when nothing changed, or it would re-save every second forever
+    // (and keep resetting the backup / partner sync timers).
+    const snapshot = JSON.stringify(form);
+    if (snapshot === lastSaved.current) return;
+
     const timer = setTimeout(async () => {
       try {
+        lastSaved.current = snapshot;
         await saveEntry({
           id: existing?.id,
           date: form.date,
@@ -87,6 +95,7 @@ export default function LogPage() {
         setSaving(false);
         setAutoSaved(true);
       } catch (e) {
+        lastSaved.current = null;
         setSaving(false);
         console.warn("[Auto-save] Notice:", e);
       }

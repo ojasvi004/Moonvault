@@ -56,9 +56,9 @@ export function buildMessages(task: AiTask, input: Record<string, unknown>): { m
         messages: [
           {
             role: "system",
-            content: `${SAFETY} You explain patterns. The stats were computed by the app; do not recompute them, interpret them. Find symptoms, moods or sleep changes that recur at a similar cycle day or phase (menstrual ~days 1-5, follicular, ovulation window ~14 days before the next period, luteal). Output 3 to 5 bullets starting with "- ", each naming the pattern and how often it appeared (e.g. "in 3 of 4 cycles"). Then one line starting with "Tip:" with a general, non-medical self-care or tracking suggestion.`,
+            content: `${SAFETY} You explain patterns. The stats were computed by the app; do not recompute them, interpret them. Find symptoms, moods or sleep changes that recur at a similar cycle day or phase (menstrual ~days 1-5, follicular, ovulation window ~14 days before the next period, luteal). Output 3 to 5 bullets starting with "- ", each naming the pattern and how often it appeared (e.g. "in 3 of 4 cycles"). If "Today" is given, add one line starting with "This week:" saying what the user's own history suggests for the next few days at this point in the cycle (only if the data supports it). Then one line starting with "Tip:" with a general, non-medical self-care or tracking suggestion.`,
           },
-          { role: "user", content: `Stats: ${JSON.stringify(input.stats)}\nEntries with cycle day: ${JSON.stringify(input.data)}` },
+          { role: "user", content: `Stats: ${JSON.stringify(input.stats)}\nToday: ${JSON.stringify(input.today ?? null)}\nEntries with cycle day: ${JSON.stringify(input.data)}` },
         ],
       };
     case "summary":

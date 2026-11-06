@@ -85,6 +85,9 @@ export async function routerTranscribe(file: Blob, filename: string, signal: Abo
 
 /** Fallback when no speech-to-text model is routable: an audio-capable chat model. */
 export async function routerTranscribeViaChat(audio: Uint8Array, format: string, signal: AbortSignal) {
+  // The audio-chat provider only accepts the audio as a data URL; raw base64 is
+  // rejected with "The provided URL does not appear to be valid".
+  const dataUrl = `data:audio/${format};base64,${Buffer.from(audio).toString("base64")}`;
   return routerChat(
     {
       model: serverEnv.zgAudioChatModel,
@@ -93,10 +96,25 @@ export async function routerTranscribeViaChat(audio: Uint8Array, format: string,
         { role: "system", content: "Transcribe the user's audio verbatim. Output only the transcript text." },
         {
           role: "user",
-          content: [{ type: "input_audio", input_audio: { data: Buffer.from(audio).toString("base64"), format } }],
+          content: [{ type: "input_audio", input_audio: { data: dataUrl, format } }],
         },
       ],
     },
     signal,
   );
+}
+
+/** Text -> speech (MP3) for reading AI answers aloud. */
+export async function routerSpeak(text: string, signal: AbortSignal): Promise<{ audio: ArrayBuffer; requestId: string }> {
+  const res = await fetch(`${serverEnv.zgBaseUrl}/audio/speech`, {
+    method: "POST",
+    headers: headers({ "content-type": "application/json" }),
+    body: JSON.stringify({ model: serverEnv.zgTtsModel, input: text, voice: serverEnv.zgTtsVoice, response_format: "mp3" }),
+    signal,
+  });
+  if (!res.ok) throw friendly(res.status, await res.text());
+  const type = res.headers.get("content-type") ?? "";
+  if (!type.startsWith("audio/")) throw new UpstreamError("The speech service returned no audio.", 502);
+  const requestId = res.headers.get("x-request-id") ?? "";
+  return { audio: await res.arrayBuffer(), requestId };
 }

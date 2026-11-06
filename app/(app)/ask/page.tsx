@@ -1,28 +1,17 @@
 "use client";
 import { useMemo, useState } from "react";
+import { AiInsightsCard } from "@/components/AiInsightsCard";
+import { AiText } from "@/components/AiText";
 import { useEntries, useRecords } from "@/components/hooks";
+import { SpeakButton } from "@/components/SpeakButton";
 import { useAiCall } from "@/components/useAiCall";
 import { Button, Card, Disclaimer, ErrorBox, LinkButton, PageTitle, Spinner, VerificationId, errMsg, timeAgo } from "@/components/ui";
-import { askInput, insightsInput, summaryInput } from "@/lib/ai/inputs";
+import { askInput, summaryInput } from "@/lib/ai/inputs";
 import { buildSummaryPdf } from "@/lib/ai/pdf";
 import { computeStats } from "@/lib/cycle/cycle";
 import { todayISO } from "@/lib/cycle/dates";
 
 const SUGGESTIONS = ["When do my cramps usually start?", "Is my cycle getting longer?", "How does my sleep change before my period?", "What should I mention to my doctor?"];
-
-function AiText({ text }: { text: string }) {
-  return (
-    <div className="space-y-1.5 text-[0.95rem] leading-relaxed">
-      {text.split("\n").filter((l) => l.trim()).map((l, i) => {
-        const t = l.trim().replace(/\*\*/g, "");
-        if (/^[-•*]\s/.test(t)) return <p key={i} className="flex gap-2"><span className="text-accent">•</span><span>{t.replace(/^[-•*]\s/, "")}</span></p>;
-        if (/^tip:/i.test(t)) return <p key={i} className="mt-2 rounded-xl bg-accent/10 p-3 text-sm">{t}</p>;
-        if (t.length < 40 && !/[.!?]$/.test(t)) return <p key={i} className="font-display mt-3 text-lg">{t.replace(/^#+\s*/, "")}</p>;
-        return <p key={i}>{t}</p>;
-      })}
-    </div>
-  );
-}
 
 function Working({ label }: { label: string }) {
   return (
@@ -38,7 +27,6 @@ export default function AskPage() {
   const [q, setQ] = useState("");
   const [asked, setAsked] = useState("");
   const ask = useAiCall("ask", "ask");
-  const insights = useAiCall("insights", "insights");
   const summary = useAiCall("summary", "summary");
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfErr, setPdfErr] = useState<string | null>(null);
@@ -52,6 +40,7 @@ export default function AskPage() {
       <div>
         <PageTitle eyebrow="Private AI" title="Insights need a little data" sub="Log at least a few days (ideally one full period) and come back for patterns, answers and a doctor summary." />
         <LinkButton href="/log">Log a day</LinkButton>
+        <AiInsightsCard entries={entries} showAskLink={false} className="mt-6" />
       </div>
     );
   }
@@ -119,6 +108,9 @@ export default function AskPage() {
             <div className="mt-5 rounded-2xl border border-line bg-bg-2/60 p-4">
               <p className="mb-2 text-sm text-muted">&ldquo;{asked}&rdquo;</p>
               <AiText text={ask.state.res.text} />
+              <div className="mt-3">
+                <SpeakButton text={ask.state.res.text} />
+              </div>
               <VerificationId ids={[ask.state.res.requestId]} mock={ask.state.res.mock} />
             </div>
           )}
@@ -127,30 +119,7 @@ export default function AskPage() {
           </div>
         </Card>
 
-        <Card>
-          <h2 className="font-display text-2xl">Pattern insights</h2>
-          <p className="mt-1 text-sm text-muted">
-            Computed on your device: {stats.avgCycle}-day average cycle, {stats.avgPeriod}-day periods, ±{stats.variability} days variability. AI then explains recurring patterns by cycle phase.
-          </p>
-          <Button className="mt-4" variant="soft" onClick={() => void insights.run(insightsInput(entries))} loading={insights.state.status === "loading"}>
-            {insights.state.status === "done" ? "Refresh insights" : "Find my patterns"}
-          </Button>
-          {insights.state.status === "loading" && <Working label="Looking for patterns…" />}
-          {insights.state.status === "error" && (
-            <div className="mt-4">
-              <ErrorBox message={insights.state.message} onRetry={insights.retry} />
-            </div>
-          )}
-          {insights.state.status === "done" && (
-            <div className="mt-4">
-              <AiText text={insights.state.res.text} />
-              <VerificationId ids={[insights.state.res.requestId]} mock={insights.state.res.mock} />
-            </div>
-          )}
-          <div className="mt-4">
-            <Disclaimer />
-          </div>
-        </Card>
+        <AiInsightsCard entries={entries} showAskLink={false} />
 
         <Card className="lg:col-span-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -183,6 +152,9 @@ export default function AskPage() {
           {summary.state.status === "done" && (
             <div className="mt-5 rounded-2xl border border-line bg-bg-2/60 p-4">
               <AiText text={summary.state.res.text} />
+              <div className="mt-3">
+                <SpeakButton text={summary.state.res.text} />
+              </div>
               <VerificationId ids={[summary.state.res.requestId]} mock={summary.state.res.mock} />
             </div>
           )}
@@ -203,6 +175,9 @@ export default function AskPage() {
                 </p>
                 {r.question && <p className="mt-1 text-sm text-muted">&ldquo;{r.question}&rdquo;</p>}
                 <p className="mt-2 line-clamp-4 text-sm">{r.answer}</p>
+                <div className="mt-2">
+                  <SpeakButton text={r.answer} />
+                </div>
                 <VerificationId ids={r.requestIds} mock={r.mock} />
               </Card>
             ))}

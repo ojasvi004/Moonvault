@@ -1,8 +1,9 @@
-// Passphrase policy: at least 12 characters and a zxcvbn score >= 3.
-// The wrapped key sits in a public record, so a weak passphrase could be
-// guessed offline; this is explained to the user in one sentence.
-export const MIN_LENGTH = 12;
-export const MIN_SCORE = 3;
+// Passphrase policy: at least 8 characters and not trivially guessable
+// (zxcvbn score >= 2, i.e. "Fair"). Argon2id (64 MiB per guess) makes each
+// offline guess against the public wrapped key expensive, which is why a
+// "fair" passphrase is acceptable here. See DECISIONS.md C8.
+export const MIN_LENGTH = 8;
+export const MIN_SCORE = 2;
 
 export type Strength = { score: number; ok: boolean; message: string };
 
@@ -14,7 +15,7 @@ export async function checkPassphrase(p: string, userInputs: string[] = []): Pro
   const r = zxcvbn(p.slice(0, 128), [...userInputs, "moonvault", "period", "cycle"]);
   if (p.length < MIN_LENGTH) return { score: r.score, ok: false, message: `Use at least ${MIN_LENGTH} characters.` };
   if (r.score < MIN_SCORE) {
-    return { score: r.score, ok: false, message: r.feedback.warning || r.feedback.suggestions[0] || "Add more unusual words." };
+    return { score: r.score, ok: false, message: "Too easy to guess. Add another word or a number." };
   }
-  return { score: r.score, ok: true, message: r.score === 4 ? "Very strong." : "Strong enough." };
+  return { score: r.score, ok: true, message: r.score >= 3 ? "Strong." : "Good enough." };
 }

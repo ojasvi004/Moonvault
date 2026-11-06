@@ -6,7 +6,7 @@ import { AuthFrame } from "@/components/AuthFrame";
 import { EmailLogin } from "@/components/EmailLogin";
 import { PassphraseField } from "@/components/PassphraseField";
 import { useAuth } from "@/components/hooks";
-import { Button, ErrorBox, Field, LinkButton, Notice, Spinner, errMsg } from "@/components/ui";
+import { Button, ErrorBox, Field, LinkButton, Spinner, errMsg } from "@/components/ui";
 import { getRecords } from "@/lib/adapters";
 import { getMeta } from "@/lib/vault/db";
 import { createVault } from "@/lib/vault/vault";
@@ -48,7 +48,7 @@ export default function SignupPage() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (!strength?.ok) return setErr("Please choose a stronger passphrase.");
+    if (!strength?.ok) return setErr(strength?.message ?? "Please choose a longer passphrase.");
     if (pass !== confirm) return setErr("The two passphrases don't match.");
     if (!address) return;
     setBusy(true);
@@ -119,15 +119,14 @@ export default function SignupPage() {
         <Field label="Type it again">
           <input className="input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </Field>
-        <Notice>
-          <strong>Why so strong?</strong> A locked copy of your key is kept in a public cloud record so you can restore on any device, so a weak
-          passphrase could be guessed offline.
-        </Notice>
         {err && <ErrorBox message={err} />}
         <Button type="submit" loading={busy} className="w-full" disabled={!strength?.ok || !confirm}>
           {busy ? "Creating your vault…" : "Create my vault"}
         </Button>
         <p className="text-center text-xs text-faint">If you forget this passphrase, your data cannot be recovered.</p>
+        <p className="text-center text-xs text-faint">
+          Only here to see a partner&apos;s cycle? <Link className="text-accent" href="/partner">Open partner view</Link>
+        </p>
       </form>
     </AuthFrame>
   );

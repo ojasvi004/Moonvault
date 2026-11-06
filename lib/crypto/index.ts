@@ -22,6 +22,8 @@ export const CTX = {
   backup: "moonvault:backup:v1",
   share: "moonvault:share:v1",
   meta: "moonvault:meta:v1",
+  partner: "moonvault:partner:v1", // partner package, sealed with the partner key
+  partnerWrap: "moonvault:partner-wrap:v1", // partner key, sealed for the partner's account
 } as const;
 export type CryptoContext = (typeof CTX)[keyof typeof CTX];
 

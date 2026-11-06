@@ -37,6 +37,9 @@ export function getBackupStatus(): BackupStatus {
 
 let running: Promise<void> | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let rerun = false; // a change arrived while a backup was uploading
+let failures = 0;
+const RETRY_STEPS_MS = [15_000, 30_000, 60_000, 120_000, 300_000];
 
 export async function refreshBackupStatus() {
   const meta = await getMeta();
@@ -74,6 +77,8 @@ export function backupNow(): Promise<void> {
     set({ state: "idle", progress: 1, label: "Backed up", error: undefined });
     await refreshBackupStatus();
 
+    failures = 0;
+
     // Synchronize backup pointer to profile in background
     try {
       await publishBackupPointer(up.root, snapshotAt);
@@ -84,19 +89,31 @@ export function backupNow(): Promise<void> {
     .catch((e: unknown) => {
       const msg = errMsg(e);
       set({ state: navigator.onLine ? "error" : "offline", error: msg, progress: undefined });
-      // Try again later on its own.
-      retryTimer = setTimeout(() => void maybeAutoBackup(true), 60_000);
+      // Try again on its own, backing off: 15 s, 30 s, 1 min, 2 min, then every 5 min.
+      const wait = RETRY_STEPS_MS[Math.min(failures, RETRY_STEPS_MS.length - 1)];
+      failures++;
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => void maybeAutoBackup(true), wait);
       throw e;
     })
     .finally(() => {
       running = null;
+      // Changes saved while we were uploading are not in this snapshot: back them up too.
+      if (rerun && status.state !== "error" && status.state !== "offline") {
+        rerun = false;
+        setTimeout(() => void maybeAutoBackup(true), 500);
+      }
     });
   return running;
 }
 
 /** Back up if enough changes are pending (or force when retrying). */
 export async function maybeAutoBackup(force = false) {
-  if (!isUnlocked() || running) return;
+  if (!isUnlocked()) return;
+  if (running) {
+    rerun = true;
+    return;
+  }
   const pending = await countPending().catch(() => 0);
   set({ pending });
   const meta = await getMeta();
@@ -125,6 +142,14 @@ export function startBackupManager() {
   });
   subscribeSession(() => {
     if (isUnlocked()) void refreshBackupStatus().then(() => maybeAutoBackup(true));
+  });
+  // Safety net: anything still pending is retried every 2 minutes.
+  setInterval(() => {
+    if (isUnlocked() && !running && status.state !== "offline") void maybeAutoBackup(true);
+  }, 120_000);
+  // Leaving the tab: flush pending changes if we can (best effort).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && status.pending > 0) void maybeAutoBackup(true);
   });
   // The vault is usually already unlocked when this starts, so check right away.
   void refreshBackupStatus().then(() => maybeAutoBackup(true));

@@ -5,7 +5,7 @@ import { useAuth, useBackupStatus, useOnline } from "@/components/hooks";
 import { Button, Card, ErrorBox, Notice, PageTitle, ProgressBar, errMsg, timeAgo } from "@/components/ui";
 import { signOut } from "@/lib/auth/auth";
 import { backupNow } from "@/lib/backup/manager";
-import { AUTO_BACKUP_THRESHOLD, AUTO_LOCK_MS, MOCK_SERVICES } from "@/lib/config";
+import { AUTO_LOCK_MS, MOCK_SERVICES } from "@/lib/config";
 import { getMeta, wipeLocalVault, type VaultMeta } from "@/lib/vault/db";
 import { syncProfile } from "@/lib/vault/profileSync";
 import { lock } from "@/lib/vault/session";
@@ -60,13 +60,17 @@ export default function SettingsPage() {
         <Card>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="font-display text-2xl">Encrypted Cloud Backup</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-2xl">Encrypted Cloud Backup</h2>
+                <span className="rounded-full bg-ok/15 px-2.5 py-0.5 text-xs text-ok">Automatic</span>
+              </div>
               <p className="mt-1 text-sm text-muted">
-                Your whole vault is compressed, encrypted on this device and uploaded. It backs up automatically after every {AUTO_BACKUP_THRESHOLD} changes and resumes when you reconnect.
+                Nothing to click: a few seconds after every change, your vault is compressed, encrypted on this device and uploaded. If you&apos;re offline or
+                something fails, it retries on its own.
               </p>
             </div>
-            <Button onClick={() => void doBackup()} loading={status.state === "running"} disabled={!online}>
-              Back up now
+            <Button variant="ghost" className="shrink-0" onClick={() => void doBackup()} loading={status.state === "running"} disabled={!online || status.state === "running"}>
+              {status.state === "running" ? "Backing up…" : "Back up now"}
             </Button>
           </div>
           <dl className="mt-5 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
@@ -96,7 +100,7 @@ export default function SettingsPage() {
           )}
           {status.state === "error" && status.error && (
             <div className="mt-4">
-              <ErrorBox message={`Last backup attempt failed: ${status.error}. We'll retry automatically.`} onRetry={() => void doBackup()} />
+              <Notice tone="warn">Last backup attempt didn&apos;t finish ({status.error}). It will retry automatically; your data is safe on this device meanwhile.</Notice>
             </div>
           )}
           {err && (

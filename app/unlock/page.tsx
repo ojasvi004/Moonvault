@@ -8,6 +8,7 @@ import { useAuth, useUnlocked } from "@/components/hooks";
 import { Button, ErrorBox, Field, LinkButton, Spinner, errMsg } from "@/components/ui";
 import { WrongPassphraseError } from "@/lib/crypto";
 import { signOut } from "@/lib/auth/auth";
+import { getRecords } from "@/lib/adapters";
 import { getMeta, type VaultMeta } from "@/lib/vault/db";
 import { unlockVault } from "@/lib/vault/vault";
 
@@ -25,6 +26,28 @@ export default function UnlockPage() {
   const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Is there a vault in the account's cloud record? Only checked when this device has none.
+  const [cloud, setCloud] = useState<"checking" | "yes" | "no" | "unknown">("checking");
+
+  const address = auth.status === "signedIn" ? auth.address.toLowerCase() : null;
+  const hasLocal = !!meta && meta.owner === address;
+
+  useEffect(() => {
+    if (!address || meta === undefined || hasLocal) return;
+    let alive = true;
+    getRecords()
+      .then((r) => r.getProfile(address))
+      .then((p) => alive && setCloud(p ? "yes" : "no"))
+      .catch(() => alive && setCloud("unknown"));
+    return () => {
+      alive = false;
+    };
+  }, [address, meta, hasLocal]);
+
+  // No vault anywhere: go straight to creating one.
+  useEffect(() => {
+    if (cloud === "no" && !hasLocal) router.replace("/signup");
+  }, [cloud, hasLocal, router]);
 
   useEffect(() => {
     getMeta()
@@ -74,16 +97,36 @@ export default function UnlockPage() {
     );
   }
 
-  if (!meta || meta.owner !== auth.address.toLowerCase()) {
+  if (!hasLocal) {
+    if (cloud === "checking" || cloud === "no") {
+      return (
+        <AuthFrame title="Unlock your vault">
+          <Spinner label="Looking for your vault…" />
+        </AuthFrame>
+      );
+    }
     return (
-      <AuthFrame title="No vault on this device" sub="Restore your vault from your encrypted cloud backup, or create a new one.">
+      <AuthFrame
+        title={cloud === "yes" ? "Your vault isn't on this device yet" : "No vault on this device"}
+        sub={cloud === "yes" ? "Restore it from your encrypted cloud backup with your passphrase." : "We couldn't check your account right now. Restore your vault, or create a new one."}
+        footer={
+          <>
+            Here to see a partner&apos;s cycle? <Link className="text-accent" href="/partner">Open partner view</Link>
+          </>
+        }
+      >
         <div className="space-y-3">
           <LinkButton href="/restore" className="w-full">
             Restore my vault
           </LinkButton>
-          <LinkButton href="/signup" variant="ghost" className="w-full">
-            Create a new vault
-          </LinkButton>
+          {cloud === "unknown" && (
+            <LinkButton href="/signup" variant="ghost" className="w-full">
+              Create a new vault
+            </LinkButton>
+          )}
+          <button className="w-full text-center text-xs text-faint hover:text-text" onClick={() => void signOut()}>
+            Use a different account
+          </button>
         </div>
       </AuthFrame>
     );

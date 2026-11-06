@@ -54,7 +54,7 @@ export function PassphraseField({
           autoComplete="new-password"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="e.g. four unusual words you'll remember"
+          placeholder="e.g. two or three words you'll remember"
           autoFocus={autoFocus}
           aria-describedby="pp-strength"
         />
@@ -68,7 +68,7 @@ export function PassphraseField({
         ))}
       </div>
       <p id="pp-strength" className={`mt-1.5 text-xs ${s?.ok ? "text-ok" : "text-muted"}`}>
-        {s ? `${LABELS[s.score]} — ${s.message}` : "At least 12 characters. A few random words work well."}
+        {s ? `${LABELS[s.score]} — ${s.message}` : "At least 8 characters. Two or three words work well."}
       </p>
     </div>
   );

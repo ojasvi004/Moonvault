@@ -30,7 +30,8 @@ export class ZeroGAiAdapter implements AiAdapter {
 
   async transcribe(audio: Blob, signal?: AbortSignal): Promise<TranscribeResponse> {
     const fd = new FormData();
-    fd.append("file", audio, audio.type.includes("mp4") ? "voice.mp4" : "voice.webm");
+    const ext = audio.type.includes("mp4") ? "mp4" : audio.type.includes("ogg") ? "ogg" : "webm";
+    fd.append("file", audio, `voice.${ext}`);
     const res = await fetch("/api/ai/transcribe", { method: "POST", body: fd, signal });
     if (!res.ok) throw await asApiError(res);
     return (await res.json()) as TranscribeResponse;

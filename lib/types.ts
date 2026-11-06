@@ -64,6 +64,12 @@ export type LocalShare = {
   expiresAt: number;
   link: string; // includes the key fragment so the owner can re-copy it
   revoked?: boolean;
+  /** Partner links (long-lived, account-to-account). Absent for doctor/time-limited links. */
+  kind?: "partner";
+  partnerKey?: string; // base64url, seals the partner package
+  writeToken?: string; // base64url, authorizes updates/removal on the server
+  ownerName?: string; // how the owner is shown to the partner
+  includeMood?: boolean;
 };
 
 /** Decrypted share package as seen by the recipient. */

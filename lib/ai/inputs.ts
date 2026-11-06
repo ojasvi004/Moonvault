@@ -1,7 +1,7 @@
 // Build the small, anonymized payloads for each AI task. Decryption happens
 // in the browser; only these excerpts are sent.
-import { computeStats, cycleDays, phaseFor } from "@/lib/cycle/cycle";
-import { addDays, todayISO } from "@/lib/cycle/dates";
+import { computeStats, cycleDays, phaseFor, predict } from "@/lib/cycle/cycle";
+import { addDays, diffDays, todayISO } from "@/lib/cycle/dates";
 import type { Entry } from "@/lib/types";
 import { anonymizeEntries, selectRelevant } from "./anonymize";
 
@@ -38,7 +38,13 @@ export function insightsInput(entries: Entry[]) {
   const data = anonymizeEntries(recent, { today, cycleDays: cd })
     .filter((e) => e.symptoms || e.mood || e.sleep !== undefined || e.flow !== "none")
     .map((e) => ({ ...e, phase: e.cycleDay ? phaseFor(e.cycleDay, stats.avgCycle, stats.avgPeriod) : undefined }));
-  return { stats: statsPayload(entries), data: data.slice(-180) };
+  // Where the user is today, so the AI can say what their own history suggests for the coming days.
+  const cycleDay = cycleDays([{ date: today } as Entry], stats.periods).get(today);
+  const next = predict(stats, today, 2).find((p) => p.nextStart >= today);
+  const now = cycleDay
+    ? { cycleDay, phase: phaseFor(cycleDay, stats.avgCycle, stats.avgPeriod), daysToNextPeriod: next ? diffDays(today, next.nextStart) : undefined }
+    : undefined;
+  return { stats: statsPayload(entries), today: now, data: data.slice(-180) };
 }
 
 export function summaryInput(entries: Entry[]) {

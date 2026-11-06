@@ -1,5 +1,7 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { PartnerCard } from "@/components/PartnerCard";
 import { useAuth, useNow } from "@/components/hooks";
 import { Button, Card, ErrorBox, Field, Notice, PageTitle, Spinner, countdown, errMsg } from "@/components/ui";
 import { createShare, listActiveShares, revokeShare, whatsappLink, type ActiveShare } from "@/lib/share/share";
@@ -100,7 +102,25 @@ export default function SharePage() {
 
   return (
     <div>
-      <PageTitle eyebrow="Shared Access Links" title="Share with your doctor or partner" sub="They open a read-only page, no account needed. The link stops working on its own when time runs out." />
+      <PageTitle
+        eyebrow="Sharing"
+        title="Share on your terms"
+        sub={
+          <>
+            Link your partner&apos;s account for an always-up-to-date view, or send a time-limited link to your doctor. Has someone shared with you?{" "}
+            <Link href="/partner" className="text-accent hover:underline">
+              Open partner view
+            </Link>
+          </>
+        }
+      />
+
+      <div className="mb-5">
+        <PartnerCard />
+      </div>
+
+      <h2 className="font-display mb-1 mt-10 text-2xl">Time-limited links</h2>
+      <p className="mb-4 text-sm text-muted">For a doctor or anyone else. They open a read-only page, no account needed, and it stops working on its own.</p>
 
       <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
         <Card>
@@ -138,7 +158,7 @@ export default function SharePage() {
           ) : (
             <form onSubmit={submit} className="space-y-5">
               <Field label="Who is it for?" hint="Only stored on your device, encrypted.">
-                <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Dr. appointment, partner" maxLength={60} />
+                <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Dr. appointment" maxLength={60} />
               </Field>
               <fieldset>
                 <legend className="mb-2 text-sm font-medium">What to share</legend>

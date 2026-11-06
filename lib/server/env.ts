@@ -7,6 +7,8 @@ export const serverEnv = {
   zgChatModel: process.env.ZG_CHAT_MODEL ?? "qwen3.7-flash",
   zgSttModel: process.env.ZG_STT_MODEL ?? "openai/whisper-large-v3",
   zgAudioChatModel: process.env.ZG_AUDIO_CHAT_MODEL ?? "qwen3.5-omni-flash",
+  zgTtsModel: process.env.ZG_TTS_MODEL ?? "minimax-speech-2.8-turbo",
+  zgTtsVoice: process.env.ZG_TTS_VOICE ?? "alloy",
   zgTrustMode: process.env.ZG_TRUST_MODE ?? "", // "", "verified" or "private"
 
   arkivAccessKey: (process.env.ARKIV_ACCESS_KEY ?? "").trim().replace(/^["']|["']$/g, ""),

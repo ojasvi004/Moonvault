@@ -58,8 +58,8 @@ export default function Home() {
               <Link href="/signup" className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-7 font-semibold text-accent-ink shadow-[0_8px_30px_-8px_#f2a65a88] hover:brightness-110">
                 Create your vault
               </Link>
-              <Link href="/restore" className="inline-flex min-h-12 items-center justify-center rounded-full border border-line px-7 font-semibold hover:bg-card-2">
-                Restore on this device
+              <Link href="/unlock" className="inline-flex min-h-12 items-center justify-center rounded-full border border-line px-7 font-semibold hover:bg-card-2">
+                I already have a vault
               </Link>
             </div>
             <p className="mt-4 text-xs text-faint">Free · Email sign-in · No ads, no trackers</p>

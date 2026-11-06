@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AiInsightsCard } from "@/components/AiInsightsCard";
 import { useEntries } from "@/components/hooks";
 import { Card, Disclaimer, LinkButton, PageTitle, Spinner } from "@/components/ui";
 import { computeStats, cycleDays, dayKind, phaseFor, predict } from "@/lib/cycle/cycle";
@@ -178,6 +179,8 @@ export default function CalendarPage() {
           </Card>
         </div>
       </div>
+
+      <AiInsightsCard entries={entries!} className="mt-5" />
     </div>
   );
 }

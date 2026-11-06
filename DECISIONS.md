@@ -25,6 +25,7 @@ Every non-obvious choice, with the reason. Verification results from section 9 a
 | C5 | `memzero` on KEK, passphrase bytes, share keys and the DK on lock / replace. Plaintext JSON buffers are zero-filled after sealing. | Hard rule 7. (JS strings such as the passphrase input cannot be wiped; we drop references.) |
 | C6 | **DK never derived from a wallet signature**; the passphrase is independent of the login. | Hard rule 8. Losing email access doesn't expose data, and the account provider can't decrypt. |
 | C7 | Share packages also embed `shareId` inside the ciphertext and are checked after decryption. | Binds a package to its link, so a ciphertext can't be replayed under another ID. |
+| C8 | **Passphrase policy relaxed (2026-11-06): ≥ 8 characters and zxcvbn score ≥ 2** (was 12 chars and score ≥ 3). | Users found the old rules too strict. Each offline guess against the public wrapped key costs a 64 MiB Argon2id run, so a "fair" passphrase is still expensive to brute-force. Trade-off: weaker than before. Raise `MIN_SCORE` in `lib/vault/passphrase.ts` to tighten it again. |
 
 ## Data & storage
 
@@ -46,6 +47,7 @@ Every non-obvious choice, with the reason. Verification results from section 9 a
 | B4 | Auto-backup triggers: ≥3 pending changes, on unlock/start if anything is pending, on `online`, and a 60 s retry after failure. Uploads use 4 attempts with exponential backoff and jitter. | The UI never waits on the network (rule 5.3.3). |
 | B5 | After an upload, the profile record is patched with `backupRoot` + `backupAt`. | Restore needs only the account → profile → root. |
 | B6 | Resumable/chunked upload is **not** implemented. | Bundles are far below one 0G segment; the SDK's upload retries cover our case. |
+| B7 | **Backup needs no clicks.** Each change triggers an upload ~1.5 s later. Changes made *during* an upload trigger a follow-up run, failures retry with backoff (15 s → 5 min), a 2-minute safety interval catches anything pending, and hiding the tab flushes pending changes. "Back up now" stays as a secondary button. | Previously, edits made mid-upload waited for the next edit. Separately, the Log page's auto-save re-saved every second (its effect depended on `existing`, which changes on every save), which kept resetting the backup debounce. Both are fixed. |
 
 ## Records (Arkiv)
 
@@ -74,6 +76,9 @@ See `arkiv/schema.md` for fields.
 | G6 | Anonymisation: dates become `daysAgo` offsets, IDs and timestamps are dropped, notes are scrubbed (emails, phones, URLs, @handles, long numbers, "Dr./Mr. Name"), and only a relevant window is sent (Ask: 14–365 days by question wording; Insights: 200 days; Summary: 183 days). | Rule 1: minimal, anonymised excerpt. |
 | G7 | 28 s server timeout, 30 s client timeout, retry button, spinner. Rate limit 30 AI calls per 10 min per IP. Optional `ZG_TRUST_MODE=private` header for TEE-only routing. | Never freeze the UI; protect the paid key. |
 | G8 | Every AI result `{answer, requestIds, model}` is sealed into the local `ai` store and included in backups. | "Store it with the result in the local encrypted store." |
+| G9 | **Voice fallback sends audio as a data URL** (`data:audio/<fmt>;base64,…`) to `qwen3.5-omni-flash`. It is used whenever Whisper fails or returns empty text, except on 401/402/403/429. | The provider rejects raw base64 with "The provided URL does not appear to be valid" (verified live for webm/ogg/mp4/wav), so the fallback never worked before. |
+| G10 | **Read-aloud ("Listen")** on AI answers via `POST /api/ai/speak` → router `/audio/speech` with `minimax-speech-2.8-turbo` (MP3). Falls back to the browser's `speechSynthesis` in demo mode or on failure. | The router lists MiniMax speech models; verified live (200, audio/mpeg). The text sent is the AI answer the user already received. |
+| G11 | **AI Insights run automatically** (Today page + Ask page): when there are ≥ 3 entries and the last insight is > 24 h old or older than the newest edit. At most one automatic attempt per data version per session. The prompt adds a "This week:" line based on the user's current cycle day/phase. | The feature existed only behind a button on the Ask page, so it looked missing. The guard prevents repeated paid calls on errors or navigation. |
 
 ## Sharing
 
@@ -82,6 +87,9 @@ See `arkiv/schema.md` for fields.
 | H1 | Link `/s/<shareId>#<key>`, both base64url (shareId 128-bit random, key 256-bit). `Referrer-Policy: no-referrer` site-wide. | The fragment never reaches a server; no-referrer avoids leaking even the shareId to outbound links. |
 | H2 | Scopes: `dates` (bleeding days + flow), `dates_symptoms` (+ symptoms), `full` (+ mood, sleep, notes). Time span 3/6/12 months. Durations 24 h / 7 d / custom 1 h–90 d. | Spec + sensible bounds. |
 | H3 | The recipient label is stored only locally (encrypted). The share list comes from **Arkiv queried by owner** and is merged with local labels. | Rule 3 (no names on chain) + "at least one user-visible feature reads from Arkiv". |
+| H4 | **Partner sharing = account-to-account link** (`/partner/join#<id>.<K>`, `/partner`). The owner's vault keeps K + a write token (stored in the `shares` store, so it's backed up) and re-seals a **limited summary** (period days, predictions, phase, fertile window, averages; mood only if opted in; never symptoms, notes or sleep) on unlock, ~3 s after edits, and hourly. | Requested feature: the partner signs in and sees the owner's cycle without a vault or passphrase. |
+| H5 | The partner's copy of K is sealed with `SHA-256(signature)` of a fixed message signed by **their** account (deterministic ECDSA), so it opens on any device after sign-in. The server stores only ciphertext and SHA-256 hashes of the write tokens. One partner per invite (first claim wins, reuse → 409). Either side can remove the link. | No key exchange round trip is needed and the server can't read anything. If a wallet ever signs non-deterministically, the partner re-opens the invite once on that device (the same partner may re-claim). |
+| H6 | Partner links live in a **server file store** (`$MOONVAULT_DATA_DIR` or `.moonvault-storage/partners`), not Arkiv. | The records are mutable (re-sealed on every edit) and Arkiv writes are blocked on faucet funds. This needs a persistent disk: Vercel's filesystem is ephemeral, so move it to Arkiv or a KV store before production. |
 
 ## Auth & mock mode
 
@@ -91,6 +99,7 @@ See `arkiv/schema.md` for fields.
 | M2 | **Mock auth** when `NEXT_PUBLIC_MOCK_SERVICES=true` *or* no thirdweb client ID: code `123456`, and a deterministic test account per email (SHA-256 of the email, so "restore on a new device" works in mock mode). | Demo resilience. Clearly labelled in the UI ("Demo mode"). Never used with real services. |
 | M3 | Mock adapters keep real expiry/ownership semantics and persist to `localStorage`, so a share link works in another tab of the same browser. Mock mode is **single-browser**. | The spec asks for in-memory mocks; persistence was added so the doctor-view demo works. |
 | M4 | If a real service is not configured, its API route returns 503 with a clear message. **No silent fake results.** Mock AI output is prefixed `[Demo]`, and its IDs read `mock-…` with a "(demo)" label. | Rule: "Never fake a result silently." |
+| M5 | `/unlock` with no vault on this device checks the account record. If there is **no vault**, it goes straight to `/signup` and "Restore my vault" is never shown. If one exists, only Restore is offered. If the lookup fails, both options are shown. The landing page's secondary button is now "I already have a vault" → `/unlock`. `getProfile` now throws (instead of returning "no vault") when both Arkiv and the cloud profile store are unreachable. | Don't offer restore to people with nothing to restore, and never send an existing user to create a new vault because of a network error. |
 
 ## UI
 
