@@ -19,6 +19,8 @@ export const serverEnv = {
   zgEvmRpc: process.env.ZG_EVM_RPC ?? "https://evmrpc-testnet.0g.ai",
   zgIndexerRpc: process.env.ZG_INDEXER_RPC ?? "https://indexer-storage-testnet-turbo.0g.ai",
   zgStorageKey: (process.env.ZG_STORAGE_PRIVATE_KEY || process.env.RELAY_PRIVATE_KEY || "") as string,
+
+  mongodbUri: process.env.MONGODB_URI ?? "",
 };
 
 export function arkivRpcUrl(): string {

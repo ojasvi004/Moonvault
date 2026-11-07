@@ -205,7 +205,7 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
   }
 
   async saveProfile(signer: Account, data: ProfileWrite, existingKey?: string) {
-    void syncCloudProfile(signer.address, data, existingKey);
+    await syncCloudProfile(signer.address, data, existingKey);
     try {
       const balance = await arkivPublic().getBalance({ address: signer.address }).catch(() => 0n);
       if (balance === 0n) {
@@ -225,7 +225,7 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
       }
       // Longest lifetime the chain allows (~182 days); extended again on each login.
       const { entityKey, txHash } = await wallet.createEntity(ProfileSchema, values, { expiration: ExpirationTime.max() });
-      void syncCloudProfile(signer.address, data, entityKey);
+      await syncCloudProfile(signer.address, data, entityKey);
       return { entityKey, txHash };
     } catch (err) {
       console.warn(
@@ -252,7 +252,7 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
 
   async createShare(signer: Account, d: ShareWrite) {
     if (d.payload && d.payload.length > MAX_INLINE) throw new Error("Share package too large to store inline");
-    void syncCloudShare(signer.address, d);
+    await syncCloudShare(signer.address, d);
     try {
       const balance = await arkivPublic().getBalance({ address: signer.address }).catch(() => 0n);
       if (balance === 0n) {
@@ -271,7 +271,7 @@ export class ArkivAdapter implements ProfileAdapter, SharesAdapter {
         },
         { expiration: ExpirationTime.fromSeconds(seconds) },
       );
-      void syncCloudShare(signer.address, d, entityKey);
+      await syncCloudShare(signer.address, d, entityKey);
       return { entityKey, txHash };
     } catch (err) {
       console.warn(

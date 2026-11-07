@@ -13,6 +13,7 @@ import StickyFooter from "@/components/fancy/StickyFooter";
 import TextAlongPath from "@/components/fancy/TextAlongPath";
 import TextHighlighter from "@/components/fancy/TextHighlighter";
 import TextRotate from "@/components/fancy/TextRotate";
+import { LenisScroll } from "@/components/LenisScroll";
 
 const PEACH = "#f2a65a4d";
 const ROSE_HL = "#ec7c8e4d";
@@ -179,24 +180,26 @@ function AccessCell({ a }: { a: Access }) {
 
 export function Landing() {
   return (
-    <div className="overflow-x-clip bg-bg">
-      <main className="relative z-10 bg-bg">
-        <Nav />
-        <Hero />
-        <TrustMarquee />
-        <Stats />
-        <HowItWorks />
-        <Manifesto />
-        <Permissions />
-        <ZeroG />
-        <Features />
-        <Partners />
-        <FinalCta />
-      </main>
-      <StickyFooter height={460}>
-        <Footer />
-      </StickyFooter>
-    </div>
+    <LenisScroll>
+      <div className="overflow-x-clip bg-bg">
+        <main className="relative z-10 bg-bg">
+          <Nav />
+          <Hero />
+          <TrustMarquee />
+          <Stats />
+          <HowItWorks />
+          <Manifesto />
+          <Permissions />
+          <ZeroG />
+          <Features />
+          <Partners />
+          <FinalCta />
+        </main>
+        <StickyFooter height={460}>
+          <Footer />
+        </StickyFooter>
+      </div>
+    </LenisScroll>
   );
 }
 
@@ -236,28 +239,71 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="mx-auto flex max-w-3xl flex-col items-center px-4 pb-20 pt-20 text-center sm:px-6 sm:pt-28">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Private period tracking</p>
-      <h1 className="font-display mt-5 text-[2.8rem] leading-[1.05] sm:text-7xl">
-        Your cycle,
-        <br />
-        <span className="bg-gradient-to-r from-gold via-accent to-rose bg-clip-text text-transparent">kept in your vault.</span>
-      </h1>
-      <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-        Moonvault tracks your period, symptoms, mood, and sleep while encrypting everything on your device first. Get thoughtful AI insights, a doctor-ready summary, and sharing that expires on its own.
-      </p>
-      <div className="mt-9 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
-        <Link
-          href="/signup"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-8 font-semibold text-accent-ink shadow-[0_8px_30px_-8px_#f2a65a88] hover:brightness-110"
-        >
-          Create your vault
-        </Link>
-        <Link href="/unlock" className="inline-flex min-h-12 items-center justify-center rounded-full border border-line px-8 font-semibold hover:bg-card-2">
-          I already have a vault
-        </Link>
+    <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-24 pt-16 sm:px-6 sm:pt-24 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">A private place for your patterns</p>
+        <h1 className="font-display mt-5 max-w-3xl text-[3.2rem] leading-[0.98] sm:text-7xl">
+          Know your cycle.
+          <br />
+          <span className="bg-gradient-to-r from-gold via-accent to-rose bg-clip-text text-transparent">Keep it yours.</span>
+        </h1>
+        <p className="mt-7 max-w-xl text-lg leading-relaxed text-muted">
+          Log periods, symptoms, mood, and sleep in a vault encrypted on your device. Moonvault gives you useful insight without asking you to hand over your most intimate data.
+        </p>
+        <div className="mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <Link
+            href="/signup"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-8 font-semibold text-accent-ink shadow-[0_8px_30px_-8px_#f2a65a88] hover:brightness-110"
+          >
+            Create your vault
+          </Link>
+          <Link href="/unlock" className="inline-flex min-h-12 items-center justify-center rounded-full border border-line px-8 font-semibold hover:bg-card-2">
+            I already have a vault
+          </Link>
+        </div>
+        <p className="mt-5 text-xs text-faint">Free to start · Email sign-in · No ads or trackers</p>
       </div>
-      <p className="mt-5 text-xs text-faint">Free · Email sign-in · No ads, no trackers</p>
+
+      <div className="relative mx-auto w-full max-w-sm lg:mt-8">
+        <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-br from-accent/20 via-rose/10 to-lav/20 blur-2xl" aria-hidden="true" />
+        <div className="comic relative rounded-[1.5rem] bg-card p-5 sm:p-6">
+          <div className="flex items-center justify-between border-b border-line pb-4">
+            <div>
+              <p className="font-display text-xl">Your vault</p>
+              <p className="mt-1 text-xs text-muted">Private by default</p>
+            </div>
+            <span className="rounded-full border border-ok/30 bg-ok/10 px-2.5 py-1 text-xs font-semibold text-ok">Unlocked</span>
+          </div>
+          <div className="mt-5 rounded-xl border border-line bg-bg-2 p-4">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-xs text-muted">This cycle</p>
+                <p className="mt-1 font-display text-4xl">Day 18</p>
+              </div>
+              <span className="text-3xl text-rose" aria-hidden="true">◒</span>
+            </div>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-line">
+              <div className="h-full w-[62%] rounded-full bg-gradient-to-r from-rose to-accent" />
+            </div>
+            <div className="mt-3 flex justify-between text-[11px] text-faint">
+              <span>Period</span>
+              <span>Today</span>
+              <span>Next cycle</span>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            <div className="rounded-xl border border-line bg-bg-2 p-3">
+              <span className="text-faint">Stored</span>
+              <p className="mt-1 font-semibold text-ok">On your device</p>
+            </div>
+            <div className="rounded-xl border border-line bg-bg-2 p-3">
+              <span className="text-faint">Shared links</span>
+              <p className="mt-1 font-semibold text-accent">Expire by choice</p>
+            </div>
+          </div>
+          <p className="mt-5 text-center font-mono text-[10px] tracking-wide text-faint">XChaCha20-Poly1305 · zero readable bytes</p>
+        </div>
+      </div>
     </section>
   );
 }

@@ -2,21 +2,16 @@
 // ethers signer funded on the 0G chain, so uploads go through this route
 // with a relay key. The server only ever handles ciphertext.
 import "server-only";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { serverEnv } from "./env";
+import { getBlob, saveBlob } from "./db";
 
 type SDK = typeof import("@0gfoundation/0g-ts-sdk");
 let sdk: Promise<SDK> | null = null;
 const loadSdk = () => (sdk ??= import("@0gfoundation/0g-ts-sdk"));
 
-const STORAGE_DIR = path.join(process.cwd(), ".moonvault-storage");
-
 async function saveLocalBlob(root: string, bytes: Uint8Array): Promise<void> {
   try {
-    await fs.mkdir(STORAGE_DIR, { recursive: true });
-    const file = path.join(STORAGE_DIR, `${root.toLowerCase()}.bin`);
-    await fs.writeFile(file, bytes);
+    await saveBlob(root, bytes);
   } catch (err) {
     console.warn("[Cloud Storage] Failed to cache local blob:", err);
   }
@@ -24,9 +19,7 @@ async function saveLocalBlob(root: string, bytes: Uint8Array): Promise<void> {
 
 async function readLocalBlob(root: string): Promise<Uint8Array | null> {
   try {
-    const file = path.join(STORAGE_DIR, `${root.toLowerCase()}.bin`);
-    const buf = await fs.readFile(file);
-    return new Uint8Array(buf);
+    return await getBlob(root);
   } catch {
     return null;
   }
