@@ -55,6 +55,19 @@ html {
   color-scheme: dark;
 }
 
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+html.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+html.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
 body {
   background:
     radial-gradient(1200px 600px at 85% -10%, #3a1f4a55, transparent 60%),
